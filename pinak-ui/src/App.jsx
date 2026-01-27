@@ -17,7 +17,7 @@ const VALUE_ORDER = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"
 /* ---------- SUIT UI (COLOR + TINT) ---------- */
 function suitColor(suit) {
   if (suit === "♥" || suit === "♦") return "#ff3b3b";
-  return "#0c1a2a"; // ♠ ♣ dark for visibility
+  return "#0c1a2a"; // ♠ ♣
 }
 
 function cardFaceBg(card) {
@@ -51,7 +51,7 @@ export default function App() {
   // discard is independent of run selection
   const [discardPick, setDiscardPick] = useState(null);
 
-  // synced to server truth: me.canDiscard
+  // synced to server truth: me.canDiscard (after any draw)
   const [hasDrawn, setHasDrawn] = useState(false);
 
   // landscape detection
@@ -126,25 +126,22 @@ export default function App() {
       const meNext = state.players.find((p) => p.id === socket.id);
       const isMyTurnNext = state.players[state.turn]?.id === socket.id;
 
-      // reflect server truth: did I draw this turn?
       setHasDrawn(!!meNext?.canDiscard);
 
-      // reset open selection every update (safe)
-      setOpenCount(0);
+      // IMPORTANT: keep openCount valid if open shrank
+      const openLen = state.open?.length || 0;
+      setOpenCount((prev) => (prev > openLen ? openLen : prev));
 
-      // clear local picks when turn changes OR round/game ends
-      if (!isMyTurnNext || state.roundOver || state.gameOver) {
+      if (!isMyTurnNext) {
         setSelected([]);
         setDiscardPick(null);
         setTarget(null);
       }
 
-      // keep discardPick valid
       if (discardPick && !meNext?.hand?.some((c) => c.id === discardPick)) {
         setDiscardPick(null);
       }
 
-      // invalidate target if it no longer exists
       if (target) {
         const owner = state.players.find((p) => p.id === target.playerId);
         if (!owner || !owner.openedSets?.[target.runIndex]) setTarget(null);
@@ -185,35 +182,28 @@ export default function App() {
 
   const canAct = !!game && !!me && !game.roundOver && !game.gameOver;
 
-  // must draw before doing “turn actions” (also matches your server endTurn rule)
-  const hasDrawnThisTurn = !!me?.canDiscard;
-
-  // DRAW gating: can draw only if it’s your turn, round active, and you haven't drawn yet and no required discard
+  // Draw gating:
+  // - must be your turn
+  // - cannot be in required discard
+  // - cannot have already drawn this turn (server sets canDiscard after any draw)
   const canDraw = canAct && isMyTurn && !me.mustDiscard && !me.canDiscard;
 
-  // Open stack rule: must leave at least 1 card in open stack
-  const openMaxTake = Math.max(0, (game?.open?.length || 0) - 1); // leave 1
-  const canSelectOpen = canDraw && openMaxTake > 0;
+  // ✅ FIX: selecting from open is allowed whenever drawing is allowed
+  // (even if open.length === 1)
+  const canSelectOpen = canDraw;
 
-  // require that you've drawn before opening/adding runs (prevents weird states)
-  const canCreateRun = canAct && isMyTurn && hasDrawnThisTurn && selected.length >= 3;
-  const canAddToRun = canAct && isMyTurn && hasDrawnThisTurn && !!target && selected.length >= 1;
+  const canCreateRun = canAct && isMyTurn && selected.length >= 3;
+  const canAddToRun = canAct && isMyTurn && !!target && selected.length >= 1;
 
-  // DISCARD:
-  // - required if mustDiscard
-  // - optional after any draw (server sets canDiscard=true)
   const canDiscard = canAct && isMyTurn && !!discardPick && (me.mustDiscard || me.canDiscard);
 
-  // END TURN: only after you drew, and not when discard is required
-  const canEndTurn = canAct && isMyTurn && hasDrawnThisTurn && !me.mustDiscard;
-
+  const canEndTurn = canAct && isMyTurn && !me.mustDiscard;
   const canEndRound = canAct && isMyTurn && me.hand?.length === 0;
 
   /* ---------- SORTED HAND ---------- */
   const sortedHand = useMemo(() => {
     if (!me?.hand) return [];
     return [...me.hand].sort((a, b) => {
-      // jokers last
       if (a.value === "2" && b.value !== "2") return 1;
       if (b.value === "2" && a.value !== "2") return -1;
       if (a.value === "2" && b.value === "2") return 0;
@@ -225,7 +215,7 @@ export default function App() {
     });
   }, [me?.hand]);
 
-  /* ---------- DEAL SFX TRIGGER ---------- */
+  /* ---------- DEAL ANIMATION TRIGGER ---------- */
   useEffect(() => {
     if (!me?.hand) return;
     const sig = [...me.hand].map((c) => c.id).sort().join("|");
@@ -263,6 +253,7 @@ export default function App() {
   /* ---------- HELPERS ---------- */
   function toggleCard(id) {
     if (!canAct || !isMyTurn) return;
+
     sfx.click();
     setSelected((sel) => (sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]));
     setDiscardPick(id);
@@ -272,12 +263,9 @@ export default function App() {
     if (!canSelectOpen) return;
     sfx.click();
 
-    // UI is top-first; i=0 => take 1 (top card)
-    const desired = i + 1;
-
-    // Clamp so we NEVER allow taking the entire open stack
-    const clamped = Math.min(desired, openMaxTake);
-    setOpenCount(clamped);
+    const openLen = game?.open?.length || 0;
+    const next = Math.min(i + 1, openLen);
+    setOpenCount(next);
   }
 
   /* ---------- CONNECTION ---------- */
@@ -365,7 +353,7 @@ export default function App() {
 
   if (!me) return <p style={{ padding: 16, color: stylesTokens.textStrong }}>Syncing…</p>;
 
-  // Open stack TOP-FIRST display (storage is bottom->top)
+  // Open stack TOP-FIRST display
   const openTopFirst = [...game.open].reverse();
 
   /* ---------- GAME LAYOUT (LANDSCAPE GRID) ---------- */
@@ -379,7 +367,6 @@ export default function App() {
 
   const fullWidth = isLandscape ? { gridColumn: "1 / -1" } : null;
 
-  // Hand animation variants (staggered deal)
   const handVariants = {
     hidden: {},
     show: { transition: { staggerChildren: 0.035 } }
@@ -421,20 +408,6 @@ export default function App() {
         {(game.gameOver || game.roundOver) && (
           <div style={{ ...styles.bannerNeutral, ...(fullWidth || {}) }}>
             {game.gameOver ? "🏁 Game Over" : "✅ Round Over"}
-            {game.roundOver && !game.gameOver && (
-              <div style={{ marginTop: 10 }}>
-                <button
-                  style={styles.primaryBtn}
-                  onClick={() => {
-                    ensureAudio();
-                    sfx.run();
-                    socket.emit("continueGame", { room: game.room });
-                  }}
-                >
-                  Start New Round
-                </button>
-              </div>
-            )}
           </div>
         )}
 
@@ -478,43 +451,33 @@ export default function App() {
           <div style={styles.cardSection}>
             <div style={styles.sectionHeader}>
               <h4 style={styles.h4}>Open Stack</h4>
-              <div style={styles.miniPill}>
-                Selected: {openCount} / {openMaxTake}
-              </div>
+              <div style={styles.miniPill}>Selected: {openCount}</div>
             </div>
 
             <div style={styles.openStack}>
-              {openTopFirst.map((c, i) => {
-                const isSelectable = canSelectOpen && i < openMaxTake; // cannot select last remaining card
-                const selectedNow = i < openCount;
-
-                return (
-                  <div
-                    key={c.id || i}
-                    onClick={() => {
-                      if (!isSelectable) return;
-                      selectOpen(i);
-                    }}
-                    style={{
-                      ...styles.openCard,
-                      background: selectedNow ? "rgba(255, 214, 102, 0.95)" : cardFaceBg(c),
-                      opacity: isSelectable ? 1 : 0.35,
-                      cursor: isSelectable ? "pointer" : "not-allowed"
-                    }}
-                    title={!isSelectable ? "Must leave 1 card in open stack" : "Select to draw"}
-                  >
-                    <span style={{ color: suitColor(c.suit), fontWeight: 950 }}>
-                      {c.value}
-                      {c.suit}
-                    </span>
-                  </div>
-                );
-              })}
+              {openTopFirst.map((c, i) => (
+                <div
+                  key={c.id || i}
+                  onClick={() => selectOpen(i)}
+                  style={{
+                    ...styles.openCard,
+                    background: i < openCount ? "rgba(255, 214, 102, 0.95)" : cardFaceBg(c),
+                    opacity: canSelectOpen ? 1 : 0.4,
+                    cursor: canSelectOpen ? "pointer" : "not-allowed"
+                  }}
+                >
+                  <span style={{ color: suitColor(c.suit), fontWeight: 950 }}>
+                    {c.value}
+                    {c.suit}
+                  </span>
+                </div>
+              ))}
             </div>
 
+            {/* ✅ FIX: allow drawing even if openCount === open.length (including last card) */}
             <button
               style={styles.primaryBtn}
-              disabled={!canSelectOpen || openCount < 1}
+              disabled={!canDraw || openCount < 1 || openCount > (game.open?.length || 0)}
               onClick={() => {
                 ensureAudio();
                 sfx.draw();
@@ -523,16 +486,6 @@ export default function App() {
             >
               Draw {openCount || ""} From Open
             </button>
-
-            {!canSelectOpen && (
-              <div style={{ marginTop: 8, color: stylesTokens.textMuted, fontWeight: 800, fontSize: 12 }}>
-                {openMaxTake <= 0
-                  ? "Open stack has only 1 card — cannot draw from open."
-                  : !canDraw
-                  ? "You can draw only once per turn."
-                  : ""}
-              </div>
-            )}
           </div>
 
           {/* OPENED SETS */}
@@ -560,7 +513,9 @@ export default function App() {
                         }}
                         style={{
                           ...styles.set,
-                          outline: isTarget ? "2px solid rgba(255,255,255,0.9)" : "1px dashed transparent",
+                          outline: isTarget
+                            ? "2px solid rgba(255,255,255,0.9)"
+                            : "1px dashed transparent",
                           borderRadius: 12,
                           padding: 6,
                           cursor: "pointer"
@@ -618,7 +573,7 @@ export default function App() {
                         border: isDiscard
                           ? "2px solid #ff4d4d"
                           : isRunSelected
-                          ? "2px solid rgba(255,255,255,0.88)"
+                          ? "2px solid #111"
                           : "1px solid rgba(0,0,0,0.28)"
                       }}
                       onClick={() => toggleCard(c.id)}
