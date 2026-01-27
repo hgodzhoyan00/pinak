@@ -51,14 +51,8 @@ function validRun(cards) {
   const suit = real[0].suit;
   if (!real.every(c => c.suit === suit)) return false;
 
-  const values = real.map(c => c.value);
+  const idx = real.map(c => INDEX[c.value]).sort((a,b)=>a-b);
 
-  // ✅ FIX:
-  // Do NOT hard-block "A without K".
-  // Example Q + Joker + A should be valid because Joker can represent K.
-  // The gap/joker logic below already enforces "Ace only after King" correctly.
-
-  const idx = values.map(v => INDEX[v]).sort((a,b)=>a-b);
   let gaps = 0;
   for (let i = 1; i < idx.length; i++) {
     const diff = idx[i] - idx[i-1] - 1;
@@ -66,6 +60,47 @@ function validRun(cards) {
     gaps += diff;
   }
   return gaps <= jokers;
+}
+
+/* ---------- RUN NORMALIZATION (joker placement) ---------- */
+
+function normalizeRun(cards) {
+  // assumes validRun(cards) is true
+  const jokers = cards.filter(c => c.value === "2");
+  const real = cards.filter(c => c.value !== "2").sort((a,b)=>INDEX[a.value]-INDEX[b.value]);
+
+  // If somehow no real, just return as-is
+  if (real.length === 0) return cards;
+
+  const suit = real[0].suit;
+  const realIdx = real.map(c => INDEX[c.value]);
+
+  // Build a "span" from min->max, filling gaps with jokers
+  const min = realIdx[0];
+  const max = realIdx[realIdx.length - 1];
+
+  const realByIdx = new Map(realIdx.map((idx, i) => [idx, real[i]]));
+  let jokerPool = [...jokers];
+
+  const out = [];
+  for (let i = min; i <= max; i++) {
+    if (realByIdx.has(i)) {
+      out.push(realByIdx.get(i));
+    } else {
+      // gap -> joker
+      out.push(jokerPool.pop());
+    }
+  }
+
+  // If extra jokers exist (e.g. 4,6 plus 2 jokers),
+  // append them to the end (still valid by gap logic in many games).
+  while (jokerPool.length) {
+    out.push(jokerPool.pop());
+  }
+
+  // Keep suit on jokers visually consistent (optional):
+  // jokers are wild but we can set suit to run suit for display
+  return out.map(c => (c.value === "2" ? { ...c, suit } : c));
 }
 
 /* ---------- GAME STATE ---------- */
@@ -137,6 +172,7 @@ io.on("connection", socket => {
     const p = g?.players?.[g.turn];
     if (!g || p.id !== socket.id) return;
     if (p.canDiscard) return; // already drew
+    if (!g.closed.length) return;
 
     p.hand.push(g.closed.pop());
     p.mustDiscard = true;
@@ -149,7 +185,10 @@ io.on("connection", socket => {
     const p = g?.players?.[g.turn];
     if (!g || p.id !== socket.id) return;
     if (p.canDiscard) return; // already drew
+    if (!count || count < 1) return;
+    if (count > g.open.length) return;
 
+    // open is bottom->top in storage; draw from TOP = last items
     p.hand.push(...g.open.splice(-count));
     p.mustDiscard = false;
     p.canDiscard = true;
@@ -163,6 +202,7 @@ io.on("connection", socket => {
     const p = g?.players?.[g.turn];
     if (!g || p.id !== socket.id) return;
     if (!p.canDiscard) return;
+    if (index == null || index < 0 || index >= p.hand.length) return;
 
     g.open.push(p.hand.splice(index,1)[0]);
 
@@ -190,11 +230,14 @@ io.on("connection", socket => {
     const p = g?.players?.[g.turn];
     if (!g || !p || p.id !== socket.id) return;
 
-    const cards = cardIds.map(id => p.hand.find(c => c.id === id));
-    if (cards.includes(undefined) || !validRun(cards)) return;
+    const cards = (cardIds || []).map(id => p.hand.find(c => c.id === id));
+    if (cards.includes(undefined)) return;
+    if (!validRun(cards)) return;
+
+    const normalized = normalizeRun(cards);
 
     p.hand = p.hand.filter(c => !cardIds.includes(c.id));
-    p.openedSets.push(cards);
+    p.openedSets.push(normalized);
     p.opened = true;
     emit(room);
   });
@@ -206,11 +249,12 @@ io.on("connection", socket => {
     const me = g.players.find(p => p.id === socket.id);
     const owner = g.players.find(p => p.id === targetPlayer);
     if (!me || !owner || !me.opened) return;
+    if (runIndex == null || runIndex < 0 || runIndex >= owner.openedSets.length) return;
 
     if (g.teamMode && me.team !== owner.team) return;
     if (!g.teamMode && me.id !== owner.id) return;
 
-    const add = cardIds.map(id => me.hand.find(c => c.id === id));
+    const add = (cardIds || []).map(id => me.hand.find(c => c.id === id));
     if (add.includes(undefined)) return;
 
     const original = [...owner.openedSets[runIndex]];
@@ -218,12 +262,15 @@ io.on("connection", socket => {
     const addingJoker = add.some(c => c.value === "2");
     const addingReal = add.some(c => c.value !== "2");
 
+    // If adding a joker to a run that previously had no joker, must include at least one real card too
     if (addingJoker && !hadJoker && !addingReal) return;
 
     const combined = [...original, ...add];
     if (!validRun(combined)) return;
 
-    owner.openedSets[runIndex] = combined;
+    const normalized = normalizeRun(combined);
+
+    owner.openedSets[runIndex] = normalized;
     me.hand = me.hand.filter(c => !cardIds.includes(c.id));
     emit(room);
   });

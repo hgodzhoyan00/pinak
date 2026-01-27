@@ -9,30 +9,24 @@ const SUIT_ORDER = ["♠", "♥", "♦", "♣"];
 const VALUE_ORDER = ["3","4","5","6","7","8","9","10","J","Q","K","A"];
 
 export default function App() {
-  /* ---------- STATE ---------- */
   const [connected, setConnected] = useState(false);
   const [game, setGame] = useState(null);
   const [name, setName] = useState("");
   const [room, setRoom] = useState("");
   const [teamMode, setTeamMode] = useState(false);
 
-  // show errors as toast (and also in lobby)
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
 
-  // run selection (multi)
   const [selected, setSelected] = useState([]);
-
-  // open stack selection (top-to-bottom count)
   const [openCount, setOpenCount] = useState(0);
 
-  // discard candidate (single card id)
   const [discardPick, setDiscardPick] = useState(null);
-
-  // UI-only, but synced to server truth: me.canDiscard
   const [hasDrawn, setHasDrawn] = useState(false);
 
-  /* ---------- SOCKET ---------- */
+  // NEW: which opened set we’re targeting for “Add To Run”
+  const [target, setTarget] = useState(null); // { playerId, runIndex }
+
   useEffect(() => {
     socket.on("connect", () => setConnected(true));
 
@@ -42,22 +36,26 @@ export default function App() {
       const meNext = state.players.find((p) => p.id === socket.id);
       const isMyTurnNext = state.players[state.turn]?.id === socket.id;
 
-      // hasDrawn reflects server truth (canDiscard=true after any draw)
       setHasDrawn(!!meNext?.canDiscard);
-
-      // reset open selection every update
       setOpenCount(0);
 
-      // when your turn ends -> clear selections
+      // invalidate target if it no longer exists
+      if (target) {
+        const owner = state.players.find((p) => p.id === target.playerId);
+        if (!owner || !owner.openedSets?.[target.runIndex]) {
+          setTarget(null);
+        }
+      }
+
+      // clear discardPick if no longer in hand
+      if (discardPick && !meNext?.hand?.some((c) => c.id === discardPick)) {
+        setDiscardPick(null);
+      }
+
       if (!isMyTurnNext) {
         setSelected([]);
         setDiscardPick(null);
-        return;
-      }
-
-      // if your discardPick card no longer exists in hand -> clear it
-      if (discardPick && !meNext?.hand?.some((c) => c.id === discardPick)) {
-        setDiscardPick(null);
+        setTarget(null);
       }
     });
 
@@ -73,11 +71,9 @@ export default function App() {
       socket.off("gameState");
       socket.off("errorMsg");
     };
-    // IMPORTANT: do not re-register socket handlers on state changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ---------- DERIVED ---------- */
   const me = useMemo(() => game?.players?.find((p) => p.id === socket.id), [game]);
 
   const isMyTurn = useMemo(() => {
@@ -85,32 +81,30 @@ export default function App() {
     return game.players[game.turn]?.id === me.id;
   }, [game, me]);
 
-  const showOptionalDiscard = isMyTurn && hasDrawn && !me?.mustDiscard;
-  const showRequiredDiscard = isMyTurn && !!me?.mustDiscard;
-
-  // UI gating
   const canAct = !!game && !!me && !game.roundOver && !game.gameOver;
 
-  // can draw only if you haven't drawn yet this turn (server truth)
   const canDraw = canAct && isMyTurn && !me.mustDiscard && !me.canDiscard;
   const canSelectOpen = canDraw;
 
-  // allow Create Run even during mustDiscard (closed draw) — discard still required before ending
   const canCreateRun = canAct && isMyTurn && selected.length >= 3;
 
-  // discard is enabled if you have a discardPick AND server says discard is possible/required
   const canDiscard =
     canAct &&
     isMyTurn &&
     !!discardPick &&
     (me.mustDiscard || me.canDiscard);
 
-  // end turn is blocked only when mustDiscard is true
   const canEndTurn = canAct && isMyTurn && !me.mustDiscard;
 
   const canEndRound = canAct && isMyTurn && me.hand?.length === 0;
 
-  /* ---------- SORTED HAND ---------- */
+  // Add to run is allowed if you selected a target run and at least 1 hand card selected
+  const canAddToRun =
+    canAct &&
+    isMyTurn &&
+    !!target &&
+    selected.length >= 1;
+
   const sortedHand = useMemo(() => {
     if (!me?.hand) return [];
     return [...me.hand].sort((a, b) => {
@@ -125,46 +119,31 @@ export default function App() {
     });
   }, [me?.hand]);
 
-  /* ---------- BULLETPROOF DISCARD PICK ---------- */
-  // If discard is allowed/required and no discardPick yet, auto-pick:
-  // - prefer last selected card
-  // - otherwise pick first card in hand
+  // auto pick discard when possible
   useEffect(() => {
     if (!me || !canAct || !isMyTurn) return;
-
     const discardAllowed = (me.mustDiscard || me.canDiscard);
     if (!discardAllowed) return;
 
     const handIds = new Set((me.hand || []).map((c) => c.id));
-
-    // If discardPick is invalid, clear it
     if (discardPick && !handIds.has(discardPick)) {
       setDiscardPick(null);
       return;
     }
-
-    // If no discardPick, choose one
     if (!discardPick) {
-      // prefer last selected that is in hand
       for (let i = selected.length - 1; i >= 0; i--) {
         if (handIds.has(selected[i])) {
           setDiscardPick(selected[i]);
           return;
         }
       }
-      // otherwise default to first card in hand
       if (me.hand?.[0]?.id) setDiscardPick(me.hand[0].id);
     }
   }, [me, canAct, isMyTurn, selected, discardPick]);
 
-  /* ---------- HELPERS ---------- */
   function toggleCard(id) {
     if (!canAct || !isMyTurn) return;
-
-    // Toggle run selection
     setSelected((sel) => (sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]));
-
-    // Always treat last tapped as discard candidate too
     setDiscardPick(id);
   }
 
@@ -173,10 +152,8 @@ export default function App() {
     setOpenCount(i + 1);
   }
 
-  /* ---------- CONNECTION ---------- */
   if (!connected) return <h2 style={{ padding: 20 }}>Connecting…</h2>;
 
-  /* ---------- LOBBY ---------- */
   if (!game) {
     return (
       <div style={styles.page}>
@@ -235,10 +212,9 @@ export default function App() {
 
   if (!me) return <p style={{ padding: 16 }}>Syncing…</p>;
 
-  // Open stack top first (most recent discard)
+  // display top first (most recent)
   const openTopFirst = [...game.open].reverse();
 
-  /* ---------- GAME ---------- */
   return (
     <div style={{ ...styles.page, opacity: isMyTurn ? 1 : 0.55 }}>
       <div style={styles.headerRow}>
@@ -260,14 +236,6 @@ export default function App() {
 
       {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
         <div style={styles.turnBanner}>🔥 YOUR TURN</div>
-      )}
-
-      {(showRequiredDiscard || showOptionalDiscard) && !game.roundOver && !game.gameOver && (
-        <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} style={styles.discardBanner}>
-          {showRequiredDiscard
-            ? "❗ You MUST discard before ending your turn (you may open runs first)"
-            : "💡 You may discard one card (OPTIONAL)"}
-        </motion.div>
       )}
 
       {/* SCOREBOARD */}
@@ -365,27 +333,47 @@ export default function App() {
         </div>
       </div>
 
-      {/* OPENED SETS */}
+      {/* OPENED SETS (scrollable) */}
       <div style={styles.cardSection}>
         <div style={styles.sectionHeader}>
           <h4 style={styles.h4}>Opened Sets</h4>
+          <div style={styles.miniPill}>
+            Target: {target ? "✓" : "—"}
+          </div>
         </div>
 
-        {game.players.map((p) => (
-          <div key={p.id} style={{ marginBottom: 10 }}>
-            <strong>{p.name}</strong>
-            {p.openedSets.length === 0 && <div style={{ opacity: 0.7 }}>—</div>}
-            {p.openedSets.map((set, i) => (
-              <div key={i} style={styles.set}>
-                {set.map((c) => (
-                  <span key={c.id} style={styles.setCard}>
-                    {c.value}{c.suit}
-                  </span>
-                ))}
-              </div>
-            ))}
-          </div>
-        ))}
+        <div style={styles.openedSetsScroll}>
+          {game.players.map((p) => (
+            <div key={p.id} style={{ marginBottom: 10 }}>
+              <strong>{p.name}</strong>
+              {p.openedSets.length === 0 && <div style={{ opacity: 0.7 }}>—</div>}
+
+              {p.openedSets.map((set, i) => {
+                const isTarget = target?.playerId === p.id && target?.runIndex === i;
+                return (
+                  <div
+                    key={i}
+                    onClick={() => setTarget({ playerId: p.id, runIndex: i })}
+                    style={{
+                      ...styles.set,
+                      outline: isTarget ? "2px solid #111" : "1px dashed transparent",
+                      borderRadius: 12,
+                      padding: 6,
+                      cursor: "pointer"
+                    }}
+                    title="Tap to target this run"
+                  >
+                    {set.map((c) => (
+                      <span key={c.id} style={styles.setCard}>
+                        {c.value}{c.suit}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
 
       {toast && <div style={styles.toast}>{toast}</div>}
@@ -407,6 +395,21 @@ export default function App() {
             onClick={() => socket.emit("openRun", { room: game.room, cardIds: selected })}
           >
             Create Run
+          </button>
+
+          <button
+            style={styles.primaryBtn}
+            disabled={!canAddToRun}
+            onClick={() =>
+              socket.emit("addToRun", {
+                room: game.room,
+                targetPlayer: target.playerId,
+                runIndex: target.runIndex,
+                cardIds: selected
+              })
+            }
+          >
+            Add To Run
           </button>
 
           <button
@@ -501,27 +504,6 @@ const styles = {
     textAlign: "center",
     fontWeight: "bold"
   },
-  discardBanner: {
-    background: "#ffeded",
-    color: "#900",
-    padding: "8px 10px",
-    borderRadius: 10,
-    marginBottom: 10,
-    textAlign: "center",
-    fontWeight: "bold",
-    border: "1px solid #c00"
-  },
-
-  input: {
-    display: "block",
-    width: "100%",
-    padding: 12,
-    borderRadius: 10,
-    border: "1px solid #ddd",
-    marginBottom: 10,
-    fontSize: 16
-  },
-  checkboxRow: { display: "flex", alignItems: "center", marginTop: 4 },
 
   scoreboard: { marginBottom: 0 },
   playerRow: {
@@ -563,6 +545,12 @@ const styles = {
     boxShadow: "0 2px 10px rgba(0,0,0,0.06)"
   },
 
+  openedSetsScroll: {
+    maxHeight: 240,
+    overflowY: "auto",
+    paddingRight: 4
+  },
+
   set: { display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" },
   setCard: {
     border: "1px solid #333",
@@ -571,6 +559,17 @@ const styles = {
     background: "#fafafa",
     fontWeight: 800
   },
+
+  input: {
+    display: "block",
+    width: "100%",
+    padding: 12,
+    borderRadius: 10,
+    border: "1px solid #ddd",
+    marginBottom: 10,
+    fontSize: 16
+  },
+  checkboxRow: { display: "flex", alignItems: "center", marginTop: 4 },
 
   primaryBtn: {
     padding: "12px 12px",
