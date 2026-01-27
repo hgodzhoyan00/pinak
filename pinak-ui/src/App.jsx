@@ -14,6 +14,17 @@ const socket = io(SERVER_URL, {
 const SUIT_ORDER = ["♠", "♥", "♦", "♣"];
 const VALUE_ORDER = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 
+/* ---------- SUIT UI (COLOR + TINT) ---------- */
+function suitColor(suit) {
+  return suit === "♥" || suit === "♦" ? "#c00" : "#111";
+}
+function cardTint(card) {
+  if (!card) return "#fff";
+  if (card.value === "2") return "#fff7d6"; // joker tint (gold)
+  if (card.suit === "♥" || card.suit === "♦") return "#ffecec"; // red tint
+  return "#f2f6ff"; // black suit tint (cool gray/blue)
+}
+
 export default function App() {
   /* ---------- STATE ---------- */
   const [connected, setConnected] = useState(false);
@@ -119,8 +130,7 @@ export default function App() {
   const canCreateRun = canAct && isMyTurn && selected.length >= 3;
   const canAddToRun = canAct && isMyTurn && !!target && selected.length >= 1;
 
-  const canDiscard =
-    canAct && isMyTurn && !!discardPick && (me.mustDiscard || me.canDiscard);
+  const canDiscard = canAct && isMyTurn && !!discardPick && (me.mustDiscard || me.canDiscard);
 
   const canEndTurn = canAct && isMyTurn && !me.mustDiscard;
   const canEndRound = canAct && isMyTurn && me.hand?.length === 0;
@@ -322,12 +332,15 @@ export default function App() {
                 onClick={() => selectOpen(i)}
                 style={{
                   ...styles.openCard,
-                  background: i < openCount ? "#ffe599" : "#f2f2f2",
+                  background: i < openCount ? "#ffe599" : cardTint(c),
                   opacity: canSelectOpen ? 1 : 0.4,
                   cursor: canSelectOpen ? "pointer" : "not-allowed"
                 }}
               >
-                {c.value}{c.suit}
+                <span style={{ color: suitColor(c.suit) }}>
+                  {c.value}
+                  {c.suit}
+                </span>
               </div>
             ))}
           </div>
@@ -369,8 +382,16 @@ export default function App() {
                       title="Tap to target this run"
                     >
                       {set.map((c) => (
-                        <span key={c.id} style={styles.setCard}>
-                          {c.value}{c.suit}
+                        <span
+                          key={c.id}
+                          style={{
+                            ...styles.setCard,
+                            color: suitColor(c.suit),
+                            background: cardTint(c)
+                          }}
+                        >
+                          {c.value}
+                          {c.suit}
                         </span>
                       ))}
                     </div>
@@ -393,30 +414,34 @@ export default function App() {
             </div>
           </div>
 
-          <div style={styles.hand}>
-            {sortedHand.map((c) => {
-              const isRunSelected = selected.includes(c.id);
-              const isDiscard = discardPick === c.id;
+        <div style={styles.hand}>
+          {sortedHand.map((c) => {
+            const isRunSelected = selected.includes(c.id);
+            const isDiscard = discardPick === c.id;
 
-              return (
-                <motion.div
-                  key={c.id}
-                  whileHover={!me.mustDiscard ? { scale: 1.06 } : {}}
-                  style={{
-                    ...styles.card,
-                    border: isDiscard
-                      ? "2px solid #c00"
-                      : isRunSelected
-                      ? "2px solid #111"
-                      : "1px solid #333"
-                  }}
-                  onClick={() => toggleCard(c.id)}
-                >
-                  {c.value}{c.suit}
-                </motion.div>
-              );
-            })}
-          </div>
+            return (
+              <motion.div
+                key={c.id}
+                whileHover={!me.mustDiscard ? { scale: 1.06 } : {}}
+                style={{
+                  ...styles.card,
+                  background: cardTint(c),
+                  border: isDiscard
+                    ? "2px solid #c00"
+                    : isRunSelected
+                    ? "2px solid #111"
+                    : "1px solid #333"
+                }}
+                onClick={() => toggleCard(c.id)}
+              >
+                <span style={{ color: suitColor(c.suit) }}>
+                  {c.value}
+                  {c.suit}
+                </span>
+              </motion.div>
+            );
+          })}
+        </div>
         </div>
 
         {toast && <div style={styles.toast}>{toast}</div>}
@@ -433,7 +458,6 @@ export default function App() {
             Draw Closed
           </button>
 
-          {/* FIX: clear selection after Create Run so 2nd run works */}
           <button
             style={styles.primaryBtn}
             disabled={!canCreateRun}
@@ -446,7 +470,6 @@ export default function App() {
             Create Run
           </button>
 
-          {/* FIX: clear selection after Add To Run */}
           <button
             style={styles.primaryBtn}
             disabled={!canAddToRun}
@@ -464,7 +487,6 @@ export default function App() {
             Add To Run
           </button>
 
-          {/* FIX: discard uses discardPick and clears local picks */}
           <button
             style={styles.dangerBtn}
             disabled={!canDiscard}
@@ -478,7 +500,6 @@ export default function App() {
             {me.mustDiscard ? "🗑 Discard (Req)" : "🗑 Discard (Opt)"}
           </button>
 
-          {/* FIX: end turn clears selection so next turn starts clean */}
           <button
             style={styles.secondaryBtn}
             disabled={!canEndTurn}
@@ -599,15 +620,13 @@ const styles = {
     minWidth: 48,
     textAlign: "center",
     fontWeight: 800,
-    userSelect: "none",
-    color: "#111" // ✅ FIX: ensure card text is visible on themed UI
+    userSelect: "none"
   },
 
   hand: { display: "flex", flexWrap: "wrap", gap: 10 },
   card: {
     width: 54,
     height: 72,
-    background: "#fff",
     borderRadius: 12,
     display: "flex",
     alignItems: "center",
@@ -616,8 +635,7 @@ const styles = {
     fontWeight: 900,
     fontSize: 16,
     userSelect: "none",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
-    color: "#111" // ✅ FIX: ensure hand card text is visible
+    boxShadow: "0 2px 10px rgba(0,0,0,0.06)"
   },
 
   openedSetsScroll: {
@@ -632,9 +650,7 @@ const styles = {
     border: "1px solid #333",
     padding: "6px 10px",
     borderRadius: 10,
-    background: "#fafafa",
-    fontWeight: 800,
-    color: "#111" // ✅ FIX: ensure opened set text is visible
+    fontWeight: 800
   },
 
   primaryBtn: {
