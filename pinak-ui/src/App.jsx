@@ -599,8 +599,8 @@ const styles = {
     minWidth: 48,
     textAlign: "center",
     fontWeight: 800,
-    userSelect: "none"
-    color: "#111",
+    userSelect: "none",
+    color: "#111" // ✅ FIX: ensure card text is visible on themed UI
   },
 
   hand: { display: "flex", flexWrap: "wrap", gap: 10 },
@@ -616,8 +616,8 @@ const styles = {
     fontWeight: 900,
     fontSize: 16,
     userSelect: "none",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.06)"
-    color: "#111",
+    boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+    color: "#111" // ✅ FIX: ensure hand card text is visible
   },
 
   openedSetsScroll: {
@@ -633,8 +633,8 @@ const styles = {
     padding: "6px 10px",
     borderRadius: 10,
     background: "#fafafa",
-    fontWeight: 800
-    color: "#111",
+    fontWeight: 800,
+    color: "#111" // ✅ FIX: ensure opened set text is visible
   },
 
   primaryBtn: {
