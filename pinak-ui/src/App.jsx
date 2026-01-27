@@ -188,8 +188,7 @@ export default function App() {
   // - cannot have already drawn this turn (server sets canDiscard after any draw)
   const canDraw = canAct && isMyTurn && !me.mustDiscard && !me.canDiscard;
 
-  // ✅ FIX: selecting from open is allowed whenever drawing is allowed
-  // (even if open.length === 1)
+  // selecting from open is allowed whenever drawing is allowed
   const canSelectOpen = canDraw;
 
   const canCreateRun = canAct && isMyTurn && selected.length >= 3;
@@ -199,6 +198,8 @@ export default function App() {
 
   const canEndTurn = canAct && isMyTurn && !me.mustDiscard;
   const canEndRound = canAct && isMyTurn && me.hand?.length === 0;
+
+  const canContinueRound = !!game && !!me && game.roundOver && !game.gameOver;
 
   /* ---------- SORTED HAND ---------- */
   const sortedHand = useMemo(() => {
@@ -266,6 +267,19 @@ export default function App() {
     const openLen = game?.open?.length || 0;
     const next = Math.min(i + 1, openLen);
     setOpenCount(next);
+  }
+
+  function continueNextRound() {
+    if (!canContinueRound) return;
+    ensureAudio();
+    sfx.run();
+    socket.emit("continueGame", { room: game.room });
+
+    // local cleanup so next round starts clean
+    setSelected([]);
+    setDiscardPick(null);
+    setTarget(null);
+    setOpenCount(0);
   }
 
   /* ---------- CONNECTION ---------- */
@@ -411,6 +425,17 @@ export default function App() {
           </div>
         )}
 
+        {/* ✅ NEW: CONTINUE / NEXT ROUND BUTTON */}
+        {canContinueRound && (
+          <button
+            style={{ ...styles.primaryBtn, ...(fullWidth || {}) }}
+            onClick={continueNextRound}
+            title="Start next round"
+          >
+            ▶️ Start Next Round
+          </button>
+        )}
+
         {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
           <div style={{ ...styles.turnBanner, ...(fullWidth || {}) }}>🔥 YOUR TURN</div>
         )}
@@ -474,7 +499,6 @@ export default function App() {
               ))}
             </div>
 
-            {/* ✅ FIX: allow drawing even if openCount === open.length (including last card) */}
             <button
               style={styles.primaryBtn}
               disabled={!canDraw || openCount < 1 || openCount > (game.open?.length || 0)}
