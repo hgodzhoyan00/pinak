@@ -191,7 +191,11 @@ export default function App() {
 
   const canDiscard = canAct && isMyTurn && !!discardPick && (me.mustDiscard || me.canDiscard);
 
-  const canEndTurn = canAct && isMyTurn && !me.mustDiscard;
+  // ✅ BUG #1 FIX:
+  // End Turn should NOT work unless you actually drew this turn.
+  // Server sets me.canDiscard=true right after any draw (open/closed) and clears it on endTurn/discard.
+  const canEndTurn = canAct && isMyTurn && me.canDiscard && !me.mustDiscard;
+
   const canEndRound = canAct && isMyTurn && me.hand?.length === 0;
 
   /* ---------- SORTED HAND ---------- */
@@ -215,7 +219,6 @@ export default function App() {
     // signature = sorted card ids (order-stable)
     const sig = [...me.hand].map((c) => c.id).sort().join("|");
     if (sig && sig !== lastHandSigRef.current) {
-      // "deal" sfx only when game is present
       if (game) sfx.deal();
       lastHandSigRef.current = sig;
     }
