@@ -16,8 +16,8 @@ server.listen(PORT, () => console.log("Server running on", PORT));
 /* ---------- CONSTANTS ---------- */
 
 const SUITS = ["♠", "♥", "♦", "♣"];
-const ORDER = ["3","4","5","6","7","8","9","10","J","Q","K","A"];
-const INDEX = Object.fromEntries(ORDER.map((v,i)=>[v,i]));
+const ORDER = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+const INDEX = Object.fromEntries(ORDER.map((v, i) => [v, i]));
 const WIN_SCORE = 151;
 
 /* ---------- HELPERS ---------- */
@@ -25,7 +25,7 @@ const WIN_SCORE = 151;
 function buildDeck() {
   const deck = [];
   for (const s of SUITS)
-    for (const v of ["A","2","3","4","5","6","7","8","9","10","J","Q","K"])
+    for (const v of ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"])
       deck.push({
         id: uuid(),
         value: v,
@@ -44,18 +44,18 @@ function maskHand(hand) {
 function validRun(cards) {
   if (cards.length < 3) return false;
 
-  const real = cards.filter(c => c.value !== "2");
+  const real = cards.filter((c) => c.value !== "2");
   const jokers = cards.length - real.length;
   if (real.length < 2) return false;
 
   const suit = real[0].suit;
-  if (!real.every(c => c.suit === suit)) return false;
+  if (!real.every((c) => c.suit === suit)) return false;
 
-  const idx = real.map(c => INDEX[c.value]).sort((a,b)=>a-b);
+  const idx = real.map((c) => INDEX[c.value]).sort((a, b) => a - b);
 
   let gaps = 0;
   for (let i = 1; i < idx.length; i++) {
-    const diff = idx[i] - idx[i-1] - 1;
+    const diff = idx[i] - idx[i - 1] - 1;
     if (diff < 0) return false;
     gaps += diff;
   }
@@ -65,17 +65,16 @@ function validRun(cards) {
 /* ---------- RUN NORMALIZATION (joker placement) ---------- */
 
 function normalizeRun(cards) {
-  // assumes validRun(cards) is true
-  const jokers = cards.filter(c => c.value === "2");
-  const real = cards.filter(c => c.value !== "2").sort((a,b)=>INDEX[a.value]-INDEX[b.value]);
+  const jokers = cards.filter((c) => c.value === "2");
+  const real = cards
+    .filter((c) => c.value !== "2")
+    .sort((a, b) => INDEX[a.value] - INDEX[b.value]);
 
-  // If somehow no real, just return as-is
   if (real.length === 0) return cards;
 
   const suit = real[0].suit;
-  const realIdx = real.map(c => INDEX[c.value]);
+  const realIdx = real.map((c) => INDEX[c.value]);
 
-  // Build a "span" from min->max, filling gaps with jokers
   const min = realIdx[0];
   const max = realIdx[realIdx.length - 1];
 
@@ -84,19 +83,13 @@ function normalizeRun(cards) {
 
   const out = [];
   for (let i = min; i <= max; i++) {
-    if (realByIdx.has(i)) {
-      out.push(realByIdx.get(i));
-    } else {
-      // gap -> joker
-      out.push(jokerPool.pop());
-    }
+    if (realByIdx.has(i)) out.push(realByIdx.get(i));
+    else out.push(jokerPool.pop());
   }
 
-  // If extra jokers exist, append them
   while (jokerPool.length) out.push(jokerPool.pop());
 
-  // Keep suit on jokers visually consistent (optional)
-  return out.map(c => (c.value === "2" ? { ...c, suit } : c));
+  return out.map((c) => (c.value === "2" ? { ...c, suit } : c));
 }
 
 /* ---------- GAME STATE ---------- */
@@ -105,8 +98,7 @@ const games = {};
 
 /* ---------- SOCKET ---------- */
 
-io.on("connection", socket => {
-
+io.on("connection", (socket) => {
   /* ---------- CREATE / JOIN ---------- */
 
   socket.on("createRoom", ({ room, name, teamMode }) => {
@@ -116,17 +108,19 @@ io.on("connection", socket => {
     games[room] = {
       room,
       teamMode,
-      players: [{
-        id: socket.id,
-        name,
-        team: teamMode ? 0 : null,
-        hand: deck.splice(0,7),
-        openedSets: [],
-        opened: false,
-        mustDiscard: false,
-        canDiscard: false,
-        score: 0
-      }],
+      players: [
+        {
+          id: socket.id,
+          name,
+          team: teamMode ? 0 : null,
+          hand: deck.splice(0, 9),
+          openedSets: [],
+          opened: false,
+          mustDiscard: false,
+          canDiscard: false, // "has drawn this turn"
+          score: 0
+        }
+      ],
       closed: deck,
       open: [deck.pop()],
       turn: 0,
@@ -148,7 +142,7 @@ io.on("connection", socket => {
       id: socket.id,
       name,
       team: g.teamMode ? g.players.length % 2 : null,
-      hand: g.closed.splice(0,7),
+      hand: g.closed.splice(0, 9),
       openedSets: [],
       opened: false,
       mustDiscard: false,
@@ -166,71 +160,77 @@ io.on("connection", socket => {
   socket.on("drawClosed", ({ room }) => {
     const g = games[room];
     const p = g?.players?.[g.turn];
-    if (!g || p.id !== socket.id) return;
+    if (!g || !p || p.id !== socket.id) return;
+    if (g.roundOver || g.gameOver) return;
     if (p.canDiscard) return; // already drew
     if (!g.closed.length) return;
 
     p.hand.push(g.closed.pop());
-    p.mustDiscard = true;
+    p.mustDiscard = true; // closed draw requires discard before ending turn
     p.canDiscard = true;
     emit(room);
   });
 
-  socket.on("drawOpen", ({ room, count }) => {
-    const g = games[room];
-    const p = g?.players?.[g.turn];
-    if (!g || p.id !== socket.id) return;
-    if (p.canDiscard) return; // already drew
-    if (!count || count < 1) return;
-    if (count > g.open.length) return;
+ socket.on("drawOpen", ({ room, count }) => {
+  const g = games[room];
+  const p = g?.players?.[g.turn];
+  if (!g || !p || p.id !== socket.id) return;
+  if (g.roundOver || g.gameOver) return;
+  if (p.canDiscard) return; // already drew
+  if (!count || count < 1) return;
 
-    // open is bottom->top in storage; draw from TOP = last items
-    p.hand.push(...g.open.splice(-count));
-    p.mustDiscard = false;
-    p.canDiscard = true;
-    emit(room);
-  });
+  // ✅ Allow drawing up to ALL open cards (including the last one)
+  if (count > g.open.length) return;
+
+  // open is stored bottom->top; draw from TOP = last items
+  p.hand.push(...g.open.splice(-count));
+
+  // ✅ If open stack is now empty, discard becomes REQUIRED to re-seed open
+  p.mustDiscard = g.open.length === 0;
+
+  // You drew this turn (so discard is allowed, and you cannot draw again)
+  p.canDiscard = true;
+
+  emit(room);
+});
 
   /* ---------- DISCARD ---------- */
 
   socket.on("discard", ({ room, index }) => {
     const g = games[room];
     const p = g?.players?.[g.turn];
-    if (!g || p.id !== socket.id) return;
+    if (!g || !p || p.id !== socket.id) return;
+    if (g.roundOver || g.gameOver) return;
+
     if (!p.canDiscard) return;
     if (index == null || index < 0 || index >= p.hand.length) return;
 
-    g.open.push(p.hand.splice(index,1)[0]);
+    g.open.push(p.hand.splice(index, 1)[0]);
 
+    // discard ends your turn
     p.mustDiscard = false;
     p.canDiscard = false;
     g.turn = (g.turn + 1) % g.players.length;
     emit(room);
   });
 
- socket.on("endTurn", ({ room }) => {
-  const g = games[room];
-  const p = g?.players?.[g.turn];
-  if (!g || p.id !== socket.id) return;
+  socket.on("endTurn", ({ room }) => {
+    const g = games[room];
+    const p = g?.players?.[g.turn];
+    if (!g || !p || p.id !== socket.id) return;
+    if (g.roundOver || g.gameOver) return;
 
-  // BUG #1 FIX (server-enforced):
-  // You can only end your turn if you actually drew this turn.
-  // Server sets canDiscard=true after any draw (open or closed).
-  if (!p.canDiscard) {
-    io.to(socket.id).emit("errorMsg", "You must draw before ending your turn.");
-    return;
-  }
+    // BUG #1 previously fixed: must draw before endTurn
+    if (!p.canDiscard) return;
 
-  // If you drew from closed stack, discard is mandatory.
-  if (p.mustDiscard) {
-    io.to(socket.id).emit("errorMsg", "You must discard before ending your turn.");
-    return;
-  }
+    // cannot end turn if required discard (closed draw)
+    if (p.mustDiscard) return;
 
-  p.canDiscard = false;
-  g.turn = (g.turn + 1) % g.players.length;
-  emit(room);
-});
+    // open draw can end without discard
+    p.canDiscard = false;
+    g.turn = (g.turn + 1) % g.players.length;
+    emit(room);
+  });
 
   /* ---------- OPEN / ADD RUN ---------- */
 
@@ -238,39 +238,43 @@ io.on("connection", socket => {
     const g = games[room];
     const p = g?.players?.[g.turn];
     if (!g || !p || p.id !== socket.id) return;
+    if (g.roundOver || g.gameOver) return;
 
-    const cards = (cardIds || []).map(id => p.hand.find(c => c.id === id));
+    const cards = (cardIds || []).map((id) => p.hand.find((c) => c.id === id));
     if (cards.includes(undefined)) return;
     if (!validRun(cards)) return;
 
     const normalized = normalizeRun(cards);
 
-    p.hand = p.hand.filter(c => !cardIds.includes(c.id));
+    p.hand = p.hand.filter((c) => !cardIds.includes(c.id));
     p.openedSets.push(normalized);
     p.opened = true;
+
     emit(room);
   });
 
   socket.on("addToRun", ({ room, targetPlayer, runIndex, cardIds }) => {
     const g = games[room];
     if (!g) return;
+    if (g.roundOver || g.gameOver) return;
 
-    const me = g.players.find(p => p.id === socket.id);
-    const owner = g.players.find(p => p.id === targetPlayer);
+    const me = g.players.find((p) => p.id === socket.id);
+    const owner = g.players.find((p) => p.id === targetPlayer);
     if (!me || !owner || !me.opened) return;
     if (runIndex == null || runIndex < 0 || runIndex >= owner.openedSets.length) return;
 
     if (g.teamMode && me.team !== owner.team) return;
     if (!g.teamMode && me.id !== owner.id) return;
 
-    const add = (cardIds || []).map(id => me.hand.find(c => c.id === id));
+    const add = (cardIds || []).map((id) => me.hand.find((c) => c.id === id));
     if (add.includes(undefined)) return;
 
     const original = [...owner.openedSets[runIndex]];
-    const hadJoker = original.some(c => c.value === "2");
-    const addingJoker = add.some(c => c.value === "2");
-    const addingReal = add.some(c => c.value !== "2");
+    const hadJoker = original.some((c) => c.value === "2");
+    const addingJoker = add.some((c) => c.value === "2");
+    const addingReal = add.some((c) => c.value !== "2");
 
+    // If adding a joker to a run that previously had no joker, must include at least one real card too
     if (addingJoker && !hadJoker && !addingReal) return;
 
     const combined = [...original, ...add];
@@ -279,7 +283,7 @@ io.on("connection", socket => {
     const normalized = normalizeRun(combined);
 
     owner.openedSets[runIndex] = normalized;
-    me.hand = me.hand.filter(c => !cardIds.includes(c.id));
+    me.hand = me.hand.filter((c) => !cardIds.includes(c.id));
     emit(room);
   });
 
@@ -288,14 +292,18 @@ io.on("connection", socket => {
   socket.on("playerWentOut", ({ room }) => {
     const g = games[room];
     if (!g) return;
+    if (g.roundOver || g.gameOver) return;
 
-    const p = g.players.find(x => x.id === socket.id);
+    const p = g.players.find((x) => x.id === socket.id);
     if (!p || p.hand.length) return;
 
     g.roundOver = true;
     g.winner = p.id;
+
     scoreRound(g);
     checkWin(g);
+
+    g.log.push(`${p.name} went out (round over)`);
     emit(room);
   });
 
@@ -306,16 +314,19 @@ io.on("connection", socket => {
     const deck = buildDeck();
     g.closed = deck;
     g.open = [deck.pop()];
-    g.players.forEach(p => {
-      p.hand = deck.splice(0,7);
+
+    g.players.forEach((p) => {
+      p.hand = deck.splice(0, 9);
       p.openedSets = [];
       p.opened = false;
       p.mustDiscard = false;
       p.canDiscard = false;
     });
+
     g.roundOver = false;
     g.winner = null;
     g.turn = 0;
+
     g.log.push("New round started");
     emit(room);
   });
@@ -324,30 +335,35 @@ io.on("connection", socket => {
 /* ---------- SCORING ---------- */
 
 function scoreRound(g) {
-  g.players.forEach(p => {
-    if (p.id === g.winner) {
-      p.score += 10;
+  const winnerId = g.winner;
+
+  g.players.forEach((p) => {
+    const openedPts = p.openedSets.flat().reduce((s, c) => s + (c.points || 0), 0);
+    const handPts = p.hand.reduce((s, c) => s + (c.points || 0), 0);
+
+    if (p.id === winnerId) {
+      // BUG #2 FIX:
+      // Winner gets +10 BONUS + points from THEIR opened sets.
+      // Winner does NOT take any penalty.
+      p.score += 10 + openedPts;
       return;
     }
-    let pts =
-      p.hand.reduce((s,c)=>s+c.points,0) +
-      p.openedSets.flat().reduce((s,c)=>s+c.points,0);
-    if (!p.opened) pts *= 2;
+
+    let pts = handPts + openedPts;
+    if (!p.opened) pts *= 2; // double penalty only for players with no opened runs
     p.score -= pts;
   });
 }
 
 function checkWin(g) {
   if (!g.teamMode) {
-    if (g.players.some(p => p.score >= WIN_SCORE))
-      g.gameOver = true;
+    if (g.players.some((p) => p.score >= WIN_SCORE)) g.gameOver = true;
   } else {
     const teamScores = {};
-    g.players.forEach(p => {
+    g.players.forEach((p) => {
       teamScores[p.team] = (teamScores[p.team] || 0) + p.score;
     });
-    if (Object.values(teamScores).some(s => s >= WIN_SCORE))
-      g.gameOver = true;
+    if (Object.values(teamScores).some((s) => s >= WIN_SCORE)) g.gameOver = true;
   }
 }
 
@@ -357,10 +373,10 @@ function emit(room) {
   const g = games[room];
   if (!g) return;
 
-  g.players.forEach(p => {
+  g.players.forEach((p) => {
     io.to(p.id).emit("gameState", {
       ...g,
-      players: g.players.map(x => ({
+      players: g.players.map((x) => ({
         ...x,
         hand: x.id === p.id ? x.hand : maskHand(x.hand)
       }))
