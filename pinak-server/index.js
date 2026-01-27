@@ -310,13 +310,14 @@ io.on("connection", (socket) => {
 
   socket.on("playerWentOut", ({ room }) => {
     const g = games[room];
-    if (!g) return;
-
-    const p = g.players.find((x) => x.id === socket.id);
-    if (!p || p.hand.length) return;
+    const pTurn = g?.players?.[g.turn];
+    if (!g || !pTurn || pTurn.id !== socket.id) return; // ✅ must be current turn player
+    if (g.roundOver || g.gameOver) return;
+    if (pTurn.hand.length) return; // must have 0 cards
+    if (pTurn.mustDiscard) return; // ✅ cannot go out while a required discard is pending
 
     g.roundOver = true;
-    g.winner = p.id;
+    g.winner = pTurn.id;
 
     scoreRound(g);
     checkWin(g);
