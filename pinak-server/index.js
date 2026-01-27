@@ -92,14 +92,10 @@ function normalizeRun(cards) {
     }
   }
 
-  // If extra jokers exist (e.g. 4,6 plus 2 jokers),
-  // append them to the end (still valid by gap logic in many games).
-  while (jokerPool.length) {
-    out.push(jokerPool.pop());
-  }
+  // If extra jokers exist, append them
+  while (jokerPool.length) out.push(jokerPool.pop());
 
-  // Keep suit on jokers visually consistent (optional):
-  // jokers are wild but we can set suit to run suit for display
+  // Keep suit on jokers visually consistent (optional)
   return out.map(c => (c.value === "2" ? { ...c, suit } : c));
 }
 
@@ -212,16 +208,29 @@ io.on("connection", socket => {
     emit(room);
   });
 
-  socket.on("endTurn", ({ room }) => {
-    const g = games[room];
-    const p = g?.players?.[g.turn];
-    if (!g || p.id !== socket.id) return;
-    if (p.mustDiscard) return;
+ socket.on("endTurn", ({ room }) => {
+  const g = games[room];
+  const p = g?.players?.[g.turn];
+  if (!g || p.id !== socket.id) return;
 
-    p.canDiscard = false;
-    g.turn = (g.turn + 1) % g.players.length;
-    emit(room);
-  });
+  // BUG #1 FIX (server-enforced):
+  // You can only end your turn if you actually drew this turn.
+  // Server sets canDiscard=true after any draw (open or closed).
+  if (!p.canDiscard) {
+    io.to(socket.id).emit("errorMsg", "You must draw before ending your turn.");
+    return;
+  }
+
+  // If you drew from closed stack, discard is mandatory.
+  if (p.mustDiscard) {
+    io.to(socket.id).emit("errorMsg", "You must discard before ending your turn.");
+    return;
+  }
+
+  p.canDiscard = false;
+  g.turn = (g.turn + 1) % g.players.length;
+  emit(room);
+});
 
   /* ---------- OPEN / ADD RUN ---------- */
 
@@ -262,7 +271,6 @@ io.on("connection", socket => {
     const addingJoker = add.some(c => c.value === "2");
     const addingReal = add.some(c => c.value !== "2");
 
-    // If adding a joker to a run that previously had no joker, must include at least one real card too
     if (addingJoker && !hadJoker && !addingReal) return;
 
     const combined = [...original, ...add];
