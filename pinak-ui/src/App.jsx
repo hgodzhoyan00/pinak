@@ -600,6 +600,7 @@ const styles = {
     textAlign: "center",
     fontWeight: 800,
     userSelect: "none"
+    color: "#111",
   },
 
   hand: { display: "flex", flexWrap: "wrap", gap: 10 },
@@ -616,6 +617,7 @@ const styles = {
     fontSize: 16,
     userSelect: "none",
     boxShadow: "0 2px 10px rgba(0,0,0,0.06)"
+    color: "#111",
   },
 
   openedSetsScroll: {
@@ -632,6 +634,7 @@ const styles = {
     borderRadius: 10,
     background: "#fafafa",
     fontWeight: 800
+    color: "#111",
   },
 
   primaryBtn: {
