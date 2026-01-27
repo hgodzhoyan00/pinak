@@ -20,18 +20,22 @@ const ORDER = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 const INDEX = Object.fromEntries(ORDER.map((v, i) => [v, i]));
 const WIN_SCORE = 151;
 
+const HAND_SIZE = 9;
+
 /* ---------- HELPERS ---------- */
 
 function buildDeck() {
   const deck = [];
-  for (const s of SUITS)
-    for (const v of ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"])
+  for (const s of SUITS) {
+    for (const v of ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]) {
       deck.push({
         id: uuid(),
         value: v,
         suit: s,
         points: v === "A" || v === "2" ? 2 : 1
       });
+    }
+  }
   return deck.sort(() => Math.random() - 0.5);
 }
 
@@ -42,12 +46,15 @@ function maskHand(hand) {
 /* ---------- RUN VALIDATION ---------- */
 
 function validRun(cards) {
-  if (cards.length < 3) return false;
+  if (!Array.isArray(cards) || cards.length < 3) return false;
 
   const real = cards.filter((c) => c.value !== "2");
   const jokers = cards.length - real.length;
+
+  // need at least 2 real cards
   if (real.length < 2) return false;
 
+  // same suit among real cards
   const suit = real[0].suit;
   if (!real.every((c) => c.suit === suit)) return false;
 
@@ -59,12 +66,14 @@ function validRun(cards) {
     if (diff < 0) return false;
     gaps += diff;
   }
+
   return gaps <= jokers;
 }
 
 /* ---------- RUN NORMALIZATION (joker placement) ---------- */
 
 function normalizeRun(cards) {
+  // assumes validRun(cards) is true
   const jokers = cards.filter((c) => c.value === "2");
   const real = cards
     .filter((c) => c.value !== "2")
@@ -74,12 +83,11 @@ function normalizeRun(cards) {
 
   const suit = real[0].suit;
   const realIdx = real.map((c) => INDEX[c.value]);
-
   const min = realIdx[0];
   const max = realIdx[realIdx.length - 1];
 
   const realByIdx = new Map(realIdx.map((idx, i) => [idx, real[i]]));
-  let jokerPool = [...jokers];
+  const jokerPool = [...jokers];
 
   const out = [];
   for (let i = min; i <= max; i++) {
@@ -89,6 +97,7 @@ function normalizeRun(cards) {
 
   while (jokerPool.length) out.push(jokerPool.pop());
 
+  // set joker suit to run suit for display
   return out.map((c) => (c.value === "2" ? { ...c, suit } : c));
 }
 
@@ -105,19 +114,20 @@ io.on("connection", (socket) => {
     if (!room || !name || games[room]) return;
 
     const deck = buildDeck();
+
     games[room] = {
       room,
-      teamMode,
+      teamMode: !!teamMode,
       players: [
         {
           id: socket.id,
           name,
           team: teamMode ? 0 : null,
-          hand: deck.splice(0, 9),
+          hand: deck.splice(0, HAND_SIZE),
           openedSets: [],
           opened: false,
           mustDiscard: false,
-          canDiscard: false, // "has drawn this turn"
+          canDiscard: false, // true after ANY draw (open or closed)
           score: 0
         }
       ],
@@ -142,7 +152,7 @@ io.on("connection", (socket) => {
       id: socket.id,
       name,
       team: g.teamMode ? g.players.length % 2 : null,
-      hand: g.closed.splice(0, 9),
+      hand: g.closed.splice(0, HAND_SIZE),
       openedSets: [],
       opened: false,
       mustDiscard: false,
@@ -162,37 +172,38 @@ io.on("connection", (socket) => {
     const p = g?.players?.[g.turn];
     if (!g || !p || p.id !== socket.id) return;
     if (g.roundOver || g.gameOver) return;
-    if (p.canDiscard) return; // already drew
+    if (p.canDiscard) return; // already drew this turn
     if (!g.closed.length) return;
 
     p.hand.push(g.closed.pop());
-    p.mustDiscard = true; // closed draw requires discard before ending turn
+
+    // closed draw => discard REQUIRED before end turn
+    p.mustDiscard = true;
     p.canDiscard = true;
+
     emit(room);
   });
 
- socket.on("drawOpen", ({ room, count }) => {
-  const g = games[room];
-  const p = g?.players?.[g.turn];
-  if (!g || !p || p.id !== socket.id) return;
-  if (g.roundOver || g.gameOver) return;
-  if (p.canDiscard) return; // already drew
-  if (!count || count < 1) return;
+  socket.on("drawOpen", ({ room, count }) => {
+    const g = games[room];
+    const p = g?.players?.[g.turn];
+    if (!g || !p || p.id !== socket.id) return;
+    if (g.roundOver || g.gameOver) return;
+    if (p.canDiscard) return; // already drew this turn
+    if (!count || count < 1) return;
+    if (count > g.open.length) return;
 
-  // ✅ Allow drawing up to ALL open cards (including the last one)
-  if (count > g.open.length) return;
+    // open is stored bottom->top; draw from TOP = last items
+    p.hand.push(...g.open.splice(-count));
 
-  // open is stored bottom->top; draw from TOP = last items
-  p.hand.push(...g.open.splice(-count));
+    // If you emptied the open stack, you MUST discard to re-seed it.
+    // Otherwise discard stays optional.
+    p.mustDiscard = g.open.length === 0;
 
-  // ✅ If open stack is now empty, discard becomes REQUIRED to re-seed open
-  p.mustDiscard = g.open.length === 0;
+    p.canDiscard = true;
 
-  // You drew this turn (so discard is allowed, and you cannot draw again)
-  p.canDiscard = true;
-
-  emit(room);
-});
+    emit(room);
+  });
 
   /* ---------- DISCARD ---------- */
 
@@ -201,16 +212,16 @@ io.on("connection", (socket) => {
     const p = g?.players?.[g.turn];
     if (!g || !p || p.id !== socket.id) return;
     if (g.roundOver || g.gameOver) return;
-
-    if (!p.canDiscard) return;
+    if (!p.canDiscard) return; // must draw before discard
     if (index == null || index < 0 || index >= p.hand.length) return;
 
     g.open.push(p.hand.splice(index, 1)[0]);
 
-    // discard ends your turn
+    // discard ends turn
     p.mustDiscard = false;
     p.canDiscard = false;
     g.turn = (g.turn + 1) % g.players.length;
+
     emit(room);
   });
 
@@ -220,15 +231,16 @@ io.on("connection", (socket) => {
     if (!g || !p || p.id !== socket.id) return;
     if (g.roundOver || g.gameOver) return;
 
-    // BUG #1 previously fixed: must draw before endTurn
+    // must have drawn this turn to end turn
     if (!p.canDiscard) return;
 
-    // cannot end turn if required discard (closed draw)
+    // if discard required, cannot end turn
     if (p.mustDiscard) return;
 
-    // open draw can end without discard
+    // optional-discard path: end turn without discarding
     p.canDiscard = false;
     g.turn = (g.turn + 1) % g.players.length;
+
     emit(room);
   });
 
@@ -240,13 +252,16 @@ io.on("connection", (socket) => {
     if (!g || !p || p.id !== socket.id) return;
     if (g.roundOver || g.gameOver) return;
 
-    const cards = (cardIds || []).map((id) => p.hand.find((c) => c.id === id));
+    const ids = Array.isArray(cardIds) ? cardIds : [];
+    if (ids.length < 3) return;
+
+    const cards = ids.map((id) => p.hand.find((c) => c.id === id));
     if (cards.includes(undefined)) return;
     if (!validRun(cards)) return;
 
     const normalized = normalizeRun(cards);
 
-    p.hand = p.hand.filter((c) => !cardIds.includes(c.id));
+    p.hand = p.hand.filter((c) => !ids.includes(c.id));
     p.openedSets.push(normalized);
     p.opened = true;
 
@@ -258,15 +273,20 @@ io.on("connection", (socket) => {
     if (!g) return;
     if (g.roundOver || g.gameOver) return;
 
-    const me = g.players.find((p) => p.id === socket.id);
-    const owner = g.players.find((p) => p.id === targetPlayer);
+    const me = g.players.find((pp) => pp.id === socket.id);
+    const owner = g.players.find((pp) => pp.id === targetPlayer);
     if (!me || !owner || !me.opened) return;
+
     if (runIndex == null || runIndex < 0 || runIndex >= owner.openedSets.length) return;
 
+    // team restriction
     if (g.teamMode && me.team !== owner.team) return;
     if (!g.teamMode && me.id !== owner.id) return;
 
-    const add = (cardIds || []).map((id) => me.hand.find((c) => c.id === id));
+    const ids = Array.isArray(cardIds) ? cardIds : [];
+    if (ids.length < 1) return;
+
+    const add = ids.map((id) => me.hand.find((c) => c.id === id));
     if (add.includes(undefined)) return;
 
     const original = [...owner.openedSets[runIndex]];
@@ -280,10 +300,9 @@ io.on("connection", (socket) => {
     const combined = [...original, ...add];
     if (!validRun(combined)) return;
 
-    const normalized = normalizeRun(combined);
+    owner.openedSets[runIndex] = normalizeRun(combined);
+    me.hand = me.hand.filter((c) => !ids.includes(c.id));
 
-    owner.openedSets[runIndex] = normalized;
-    me.hand = me.hand.filter((c) => !cardIds.includes(c.id));
     emit(room);
   });
 
@@ -292,7 +311,6 @@ io.on("connection", (socket) => {
   socket.on("playerWentOut", ({ room }) => {
     const g = games[room];
     if (!g) return;
-    if (g.roundOver || g.gameOver) return;
 
     const p = g.players.find((x) => x.id === socket.id);
     if (!p || p.hand.length) return;
@@ -303,7 +321,6 @@ io.on("connection", (socket) => {
     scoreRound(g);
     checkWin(g);
 
-    g.log.push(`${p.name} went out (round over)`);
     emit(room);
   });
 
@@ -316,7 +333,7 @@ io.on("connection", (socket) => {
     g.open = [deck.pop()];
 
     g.players.forEach((p) => {
-      p.hand = deck.splice(0, 9);
+      p.hand = deck.splice(0, HAND_SIZE);
       p.openedSets = [];
       p.opened = false;
       p.mustDiscard = false;
@@ -333,25 +350,31 @@ io.on("connection", (socket) => {
 });
 
 /* ---------- SCORING ---------- */
-
+/*
+RULES IMPLEMENTED (per your message):
+- Winner score gain = (points in opened sets) + 10 bonus
+- Other players score gain/loss = (opened sets points) - (hand points)
+- Double penalty: only applies to the player who never opened any sets:
+    net = (openedPts - handPts) * 2  (openedPts will be 0 if never opened)
+- Winner does NOT get any penalty
+*/
 function scoreRound(g) {
-  const winnerId = g.winner;
+  const openedPts = (p) => p.openedSets.flat().reduce((s, c) => s + (c.points || 0), 0);
+  const handPts = (p) => p.hand.reduce((s, c) => s + (c.points || 0), 0);
 
   g.players.forEach((p) => {
-    const openedPts = p.openedSets.flat().reduce((s, c) => s + (c.points || 0), 0);
-    const handPts = p.hand.reduce((s, c) => s + (c.points || 0), 0);
-
-    if (p.id === winnerId) {
-      // BUG #2 FIX:
-      // Winner gets +10 BONUS + points from THEIR opened sets.
-      // Winner does NOT take any penalty.
-      p.score += 10 + openedPts;
+    if (p.id === g.winner) {
+      const gain = openedPts(p) + 10;
+      p.score += gain;
       return;
     }
 
-    let pts = handPts + openedPts;
-    if (!p.opened) pts *= 2; // double penalty only for players with no opened runs
-    p.score -= pts;
+    let net = openedPts(p) - handPts(p);
+
+    // double penalty only for this player if they never opened
+    if (!p.opened) net *= 2;
+
+    p.score += net;
   });
 }
 
