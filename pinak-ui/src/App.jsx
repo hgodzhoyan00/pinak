@@ -198,7 +198,7 @@ export default function App() {
 
   const canEndTurn = canAct && isMyTurn && !me.mustDiscard;
   const canEndRound = canAct && isMyTurn && me.hand?.length === 0;
-
+  const canStartNextRound = !!game && !!me && game.roundOver && !game.gameOver;
   const canContinueRound = !!game && !!me && game.roundOver && !game.gameOver;
 
   /* ---------- SORTED HAND ---------- */
@@ -420,10 +420,27 @@ export default function App() {
         </div>
 
         {(game.gameOver || game.roundOver) && (
-          <div style={{ ...styles.bannerNeutral, ...(fullWidth || {}) }}>
-            {game.gameOver ? "🏁 Game Over" : "✅ Round Over"}
-          </div>
-        )}
+  <div style={{ ...styles.bannerNeutral, ...(fullWidth || {}) }}>
+    <div>{game.gameOver ? "🏁 Game Over" : "✅ Round Over"}</div>
+
+    {game.roundOver && !game.gameOver && (
+      <button
+        style={{ ...styles.primaryBtn, marginTop: 10 }}
+        onClick={() => {
+          ensureAudio();
+          sfx.run();
+          socket.emit("continueGame", { room: game.room });
+          setSelected([]);
+          setDiscardPick(null);
+          setTarget(null);
+          setOpenCount(0);
+        }}
+      >
+        ▶️ Start New Round
+      </button>
+    )}
+  </div>
+)}
 
         {/* ✅ NEW: CONTINUE / NEXT ROUND BUTTON */}
         {canContinueRound && (
