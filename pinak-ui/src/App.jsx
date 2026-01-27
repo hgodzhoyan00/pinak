@@ -2,11 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { io } from "socket.io-client";
 import { motion } from "framer-motion";
 
-const socket = io(import.meta.env.VITE_SERVER_URL || "http://localhost:3001");
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+
+// iOS Safari stability: prefer websocket (avoids long-polling weirdness on some hosts)
+const socket = io(SERVER_URL, {
+  transports: ["websocket"],
+  upgrade: false
+});
 
 /* ---------- SORT CONSTANTS ---------- */
 const SUIT_ORDER = ["♠", "♥", "♦", "♣"];
-const VALUE_ORDER = ["3","4","5","6","7","8","9","10","J","Q","K","A"];
+const VALUE_ORDER = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 
 export default function App() {
   /* ---------- STATE ---------- */
@@ -16,30 +22,31 @@ export default function App() {
   const [room, setRoom] = useState("");
   const [teamMode, setTeamMode] = useState(false);
 
-  // show errors as toast (and also in lobby)
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
 
+  // run selection + open selection
   const [selected, setSelected] = useState([]);
   const [openCount, setOpenCount] = useState(0);
 
-  // Discard pick (independent from run selection)
+  // discard is independent of run selection
   const [discardPick, setDiscardPick] = useState(null);
 
-  // UI-only, but now synced to server truth: me.canDiscard
+  // synced to server truth: me.canDiscard
   const [hasDrawn, setHasDrawn] = useState(false);
 
-  // NEW: landscape detection
+  // landscape detection
   const [isLandscape, setIsLandscape] = useState(
     typeof window !== "undefined" ? window.innerWidth > window.innerHeight : false
   );
 
-  // NEW: which opened set is targeted for “Add To Run”
+  // add-to-run target
   const [target, setTarget] = useState(null); // { playerId, runIndex }
 
   /* ---------- SOCKET ---------- */
   useEffect(() => {
     socket.on("connect", () => setConnected(true));
+    socket.on("disconnect", () => setConnected(false));
 
     socket.on("gameState", (state) => {
       setGame(state);
@@ -50,10 +57,10 @@ export default function App() {
       // reflect server truth: did I draw this turn?
       setHasDrawn(!!meNext?.canDiscard);
 
-      // reset open selection
+      // reset open selection each update (safe)
       setOpenCount(0);
 
-      // clear selections when it’s not your turn
+      // if it becomes NOT your turn, clear local selections
       if (!isMyTurnNext) {
         setSelected([]);
         setDiscardPick(null);
@@ -68,21 +75,21 @@ export default function App() {
       // invalidate target if it no longer exists
       if (target) {
         const owner = state.players.find((p) => p.id === target.playerId);
-        if (!owner || !owner.openedSets?.[target.runIndex]) {
-          setTarget(null);
-        }
+        if (!owner || !owner.openedSets?.[target.runIndex]) setTarget(null);
       }
     });
 
     socket.on("errorMsg", (msg) => {
-      setError(msg || "");
-      setToast(msg || "Action rejected");
+      const m = msg || "Action rejected";
+      setError(m);
+      setToast(m);
       window.clearTimeout(window.__pinakToastTimer);
       window.__pinakToastTimer = window.setTimeout(() => setToast(""), 2200);
     });
 
     return () => {
       socket.off("connect");
+      socket.off("disconnect");
       socket.off("gameState");
       socket.off("errorMsg");
     };
@@ -104,35 +111,19 @@ export default function App() {
     return game.players[game.turn]?.id === me.id;
   }, [game, me]);
 
-  // UI GATING
   const canAct = !!game && !!me && !game.roundOver && !game.gameOver;
 
-  const canDraw = canAct && isMyTurn && !me.mustDiscard && !me.canDiscard; // server truth
+  const canDraw = canAct && isMyTurn && !me.mustDiscard && !me.canDiscard;
   const canSelectOpen = canDraw;
 
   const canCreateRun = canAct && isMyTurn && selected.length >= 3;
+  const canAddToRun = canAct && isMyTurn && !!target && selected.length >= 1;
 
-  // DISCARD:
-  // - required if mustDiscard
-  // - optional after any draw (server sets canDiscard=true)
   const canDiscard =
-    canAct &&
-    isMyTurn &&
-    !!discardPick &&
-    (me.mustDiscard || me.canDiscard);
+    canAct && isMyTurn && !!discardPick && (me.mustDiscard || me.canDiscard);
 
-  // END TURN:
-  // allowed after open draw even if you don't discard
   const canEndTurn = canAct && isMyTurn && !me.mustDiscard;
-
   const canEndRound = canAct && isMyTurn && me.hand?.length === 0;
-
-  // Add to run: target a run + pick 1+ cards
-  const canAddToRun =
-    canAct &&
-    isMyTurn &&
-    !!target &&
-    selected.length >= 1;
 
   /* ---------- SORTED HAND ---------- */
   const sortedHand = useMemo(() => {
@@ -154,7 +145,7 @@ export default function App() {
   useEffect(() => {
     if (!me || !canAct || !isMyTurn) return;
 
-    const discardAllowed = (me.mustDiscard || me.canDiscard);
+    const discardAllowed = me.mustDiscard || me.canDiscard;
     if (!discardAllowed) return;
 
     const handIds = new Set((me.hand || []).map((c) => c.id));
@@ -164,7 +155,7 @@ export default function App() {
     }
 
     if (!discardPick) {
-      // Prefer last selected card if it's still in hand
+      // prefer last selected card if still in hand
       for (let i = selected.length - 1; i >= 0; i--) {
         if (handIds.has(selected[i])) {
           setDiscardPick(selected[i]);
@@ -250,7 +241,7 @@ export default function App() {
 
   if (!me) return <p style={{ padding: 16 }}>Syncing…</p>;
 
-  // Display open stack top-first (most recent card is "top")
+  // Open stack TOP-FIRST display
   const openTopFirst = [...game.open].reverse();
 
   /* ---------- GAME LAYOUT (LANDSCAPE GRID) ---------- */
@@ -266,7 +257,7 @@ export default function App() {
 
   return (
     <div style={pageStyle}>
-      {/* HEADER (full width in landscape) */}
+      {/* HEADER */}
       <div style={{ ...styles.headerRow, ...(fullWidth || {}) }}>
         <div>
           <div style={styles.miniLabel}>Room</div>
@@ -278,14 +269,12 @@ export default function App() {
         </div>
       </div>
 
-      {/* GAME OVER / ROUND OVER (full width in landscape) */}
       {(game.gameOver || game.roundOver) && (
         <div style={{ ...styles.bannerNeutral, ...(fullWidth || {}) }}>
           {game.gameOver ? "🏁 Game Over" : "✅ Round Over"}
         </div>
       )}
 
-      {/* TURN BANNER (full width in landscape) */}
       {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
         <div style={{ ...styles.turnBanner, ...(fullWidth || {}) }}>🔥 YOUR TURN</div>
       )}
@@ -299,18 +288,18 @@ export default function App() {
           </div>
           <div style={styles.scoreboard}>
             {game.players.map((p, idx) => {
-              const isTurn = idx === game.turn;
+              const isTurnNow = idx === game.turn;
               return (
                 <div
                   key={p.id}
                   style={{
                     ...styles.playerRow,
-                    background: isTurn ? "#e6f4ff" : "transparent",
-                    fontWeight: isTurn ? "bold" : "normal"
+                    background: isTurnNow ? "#e6f4ff" : "transparent",
+                    fontWeight: isTurnNow ? "bold" : "normal"
                   }}
                 >
                   <span>
-                    {p.name} {isTurn && "⬅"}
+                    {p.name} {isTurnNow && "⬅"}
                   </span>
                   <span>{p.score}</span>
                 </div>
@@ -352,7 +341,7 @@ export default function App() {
           </button>
         </div>
 
-        {/* OPENED SETS (scrollable) */}
+        {/* OPENED SETS */}
         <div style={styles.cardSection}>
           <div style={styles.sectionHeader}>
             <h4 style={styles.h4}>Opened Sets</h4>
@@ -430,11 +419,10 @@ export default function App() {
           </div>
         </div>
 
-        {/* TOAST */}
         {toast && <div style={styles.toast}>{toast}</div>}
       </div>
 
-      {/* STICKY ACTION BAR (always fixed) */}
+      {/* STICKY ACTION BAR */}
       <div style={styles.stickyBar}>
         <div style={styles.stickyInner}>
           <button
@@ -445,44 +433,61 @@ export default function App() {
             Draw Closed
           </button>
 
+          {/* FIX: clear selection after Create Run so 2nd run works */}
           <button
             style={styles.primaryBtn}
             disabled={!canCreateRun}
-            onClick={() => socket.emit("openRun", { room: game.room, cardIds: selected })}
+            onClick={() => {
+              socket.emit("openRun", { room: game.room, cardIds: selected });
+              setSelected([]);
+              setDiscardPick(null);
+            }}
           >
             Create Run
           </button>
 
+          {/* FIX: clear selection after Add To Run */}
           <button
             style={styles.primaryBtn}
             disabled={!canAddToRun}
-            onClick={() =>
+            onClick={() => {
               socket.emit("addToRun", {
                 room: game.room,
                 targetPlayer: target.playerId,
                 runIndex: target.runIndex,
                 cardIds: selected
-              })
-            }
+              });
+              setSelected([]);
+              setDiscardPick(null);
+            }}
           >
             Add To Run
           </button>
 
+          {/* FIX: discard uses discardPick and clears local picks */}
           <button
             style={styles.dangerBtn}
             disabled={!canDiscard}
             onClick={() => {
               const idx = me.hand.findIndex((c) => c.id === discardPick);
               socket.emit("discard", { room: game.room, index: idx });
+              setSelected([]);
+              setDiscardPick(null);
             }}
           >
             {me.mustDiscard ? "🗑 Discard (Req)" : "🗑 Discard (Opt)"}
           </button>
 
+          {/* FIX: end turn clears selection so next turn starts clean */}
           <button
             style={styles.secondaryBtn}
             disabled={!canEndTurn}
-            onClick={() => socket.emit("endTurn", { room: game.room })}
+            onClick={() => {
+              socket.emit("endTurn", { room: game.room });
+              setSelected([]);
+              setDiscardPick(null);
+              setTarget(null);
+            }}
           >
             End Turn
           </button>
@@ -504,8 +509,8 @@ export default function App() {
 const styles = {
   page: {
     padding: 14,
-    paddingBottom: 220, // ✅ space for sticky bar so sections are visible
-    maxWidth: 980,      // ✅ wider helps landscape
+    paddingBottom: 220,
+    maxWidth: 980,
     margin: "0 auto",
     fontFamily: "system-ui"
   },
@@ -613,7 +618,6 @@ const styles = {
     boxShadow: "0 2px 10px rgba(0,0,0,0.06)"
   },
 
-  // ✅ opened sets are now scrollable + iOS momentum scrolling
   openedSetsScroll: {
     maxHeight: 380,
     overflowY: "auto",
