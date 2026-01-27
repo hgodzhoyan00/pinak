@@ -20,8 +20,14 @@ export default function App() {
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
 
+  // used for RUN selection (multi)
   const [selected, setSelected] = useState([]);
+
+  // used for OPEN stack selection (top-to-bottom count)
   const [openCount, setOpenCount] = useState(0);
+
+  // discard candidate (single card id)
+  const [discardPick, setDiscardPick] = useState(null);
 
   // UI-only, but now synced to server truth: me.canDiscard
   const [hasDrawn, setHasDrawn] = useState(false);
@@ -36,23 +42,28 @@ export default function App() {
       const meNext = state.players.find((p) => p.id === socket.id);
       const isMyTurnNext = state.players[state.turn]?.id === socket.id;
 
-      // IMPORTANT FIX #1:
-      // hasDrawn should reflect server truth: "did I draw this turn?"
-      // Server uses canDiscard=true after any draw (open or closed).
+      // hasDrawn reflects server truth: canDiscard=true after any draw (open or closed)
       setHasDrawn(!!meNext?.canDiscard);
 
-      // IMPORTANT FIX #2:
-      // Do NOT clear selection just because mustDiscard is false
-      // (optional discard after open draw should still work).
-      // Clear selection only when:
-      // - it becomes NOT your turn, or
-      // - you are in required discard mode (to avoid stale multi-select).
-      if (!isMyTurnNext || meNext?.mustDiscard) {
-        setSelected([]);
-      }
-
-      // open selection resets every update (safe)
+      // reset open-stack count each update (safe)
       setOpenCount(0);
+
+      // Clear selections when it becomes NOT your turn (turn moved)
+      if (!isMyTurnNext) {
+        setSelected([]);
+        setDiscardPick(null);
+      } else {
+        // If we're in required discard mode, keep RUN selection,
+        // but if discardPick is no longer in hand, clear it.
+        if (meNext?.mustDiscard) {
+          if (discardPick && !meNext?.hand?.some((c) => c.id === discardPick)) {
+            setDiscardPick(null);
+          }
+        } else {
+          // If discard is not required and you didn't draw, clear discard pick
+          if (!meNext?.canDiscard) setDiscardPick(null);
+        }
+      }
     });
 
     socket.on("errorMsg", (msg) => {
@@ -67,7 +78,8 @@ export default function App() {
       socket.off("gameState");
       socket.off("errorMsg");
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discardPick]);
 
   /* ---------- DERIVED ---------- */
   const me = useMemo(() => game?.players?.find((p) => p.id === socket.id), [game]);
@@ -80,11 +92,16 @@ export default function App() {
   const showOptionalDiscard = isMyTurn && hasDrawn && !me?.mustDiscard;
   const showRequiredDiscard = isMyTurn && !!me?.mustDiscard;
 
-  // UI GATING (B1)
+  // UI GATING
   const canAct = !!game && !!me && !game.roundOver && !game.gameOver;
-  const canDraw = canAct && isMyTurn && !me.mustDiscard && !me.canDiscard; // server truth
+
+  // canDraw: only if you haven't drawn yet this turn (server truth)
+  const canDraw = canAct && isMyTurn && !me.mustDiscard && !me.canDiscard;
   const canSelectOpen = canDraw;
-  const canCreateRun = canAct && isMyTurn && !me.mustDiscard && selected.length >= 3;
+
+  // ✅ CHANGE: Allow Create Run EVEN if mustDiscard is true (closed-draw required discard),
+  // as long as it's your turn and round/game not over.
+  const canCreateRun = canAct && isMyTurn && selected.length >= 3;
 
   // DISCARD:
   // - required if mustDiscard
@@ -92,11 +109,12 @@ export default function App() {
   const canDiscard =
     canAct &&
     isMyTurn &&
-    selected.length === 1 &&
+    !!discardPick &&
     (me.mustDiscard || me.canDiscard);
 
   // END TURN:
   // allowed after open draw even if you don't discard
+  // but NOT allowed when mustDiscard is true
   const canEndTurn = canAct && isMyTurn && !me.mustDiscard;
 
   const canEndRound = canAct && isMyTurn && me.hand?.length === 0;
@@ -120,13 +138,11 @@ export default function App() {
   function toggleCard(id) {
     if (!canAct || !isMyTurn) return;
 
-    // if discard required, single-select
-    if (me?.mustDiscard) {
-      setSelected([id]);
-      return;
-    }
-
+    // Always allow multi-select for runs
     setSelected((sel) => (sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]));
+
+    // Also treat the last tapped card as the discard candidate
+    setDiscardPick(id);
   }
 
   function selectOpen(i) {
@@ -196,7 +212,7 @@ export default function App() {
 
   if (!me) return <p style={{ padding: 16 }}>Syncing…</p>;
 
-  // ✅ CHANGE: show top of open stack first (most recent discard)
+  // Open stack top first (most recent discard)
   const openTopFirst = [...game.open].reverse();
 
   /* ---------- GAME ---------- */
@@ -213,23 +229,20 @@ export default function App() {
         </div>
       </div>
 
-      {/* GAME OVER / ROUND OVER */}
       {(game.gameOver || game.roundOver) && (
         <div style={styles.bannerNeutral}>
           {game.gameOver ? "🏁 Game Over" : "✅ Round Over"}
         </div>
       )}
 
-      {/* TURN BANNER */}
       {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
         <div style={styles.turnBanner}>🔥 YOUR TURN</div>
       )}
 
-      {/* DISCARD BANNER (Required OR Optional) */}
       {(showRequiredDiscard || showOptionalDiscard) && !game.roundOver && !game.gameOver && (
         <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} style={styles.discardBanner}>
           {showRequiredDiscard
-            ? "❗ SELECT A CARD TO DISCARD (REQUIRED)"
+            ? "❗ You MUST discard before ending your turn (you may open runs first)"
             : "💡 You may discard one card (OPTIONAL)"}
         </motion.div>
       )}
@@ -272,7 +285,7 @@ export default function App() {
           {openTopFirst.map((c, i) => (
             <div
               key={c.id || i}
-              onClick={() => selectOpen(i)}   // i is now TOP-based
+              onClick={() => selectOpen(i)}
               style={{
                 ...styles.openCard,
                 background: i < openCount ? "#ffe599" : "#f2f2f2",
@@ -280,8 +293,7 @@ export default function App() {
                 cursor: canSelectOpen ? "pointer" : "not-allowed"
               }}
             >
-              {c.value}
-              {c.suit}
+              {c.value}{c.suit}
             </div>
           ))}
         </div>
@@ -299,25 +311,40 @@ export default function App() {
       <div style={{ ...styles.cardSection, paddingBottom: 96 }}>
         <div style={styles.sectionHeader}>
           <h4 style={styles.h4}>Your Hand</h4>
-          <div style={styles.miniPill}>Selected: {selected.length}</div>
+          <div style={styles.miniPill}>
+            Run: {selected.length} | Discard:{" "}
+            {discardPick ? "✓" : "—"}
+          </div>
         </div>
 
         <div style={styles.hand}>
           {sortedHand.map((c) => {
-            const isSelected = selected.includes(c.id);
+            const isRunSelected = selected.includes(c.id);
+            const isDiscard = discardPick === c.id;
+
             return (
               <motion.div
                 key={c.id}
                 whileHover={!me.mustDiscard ? { scale: 1.06 } : {}}
                 style={{
                   ...styles.card,
-                  border: isSelected ? "2px solid #d00" : "1px solid #333",
-                  opacity: showRequiredDiscard && !isSelected ? 0.55 : 1
+                  border: isDiscard
+                    ? "2px solid #c00"
+                    : isRunSelected
+                    ? "2px solid #111"
+                    : "1px solid #333",
+                  opacity: 1
                 }}
                 onClick={() => toggleCard(c.id)}
+                title={
+                  isDiscard
+                    ? "Discard candidate"
+                    : isRunSelected
+                    ? "Selected for run"
+                    : ""
+                }
               >
-                {c.value}
-                {c.suit}
+                {c.value}{c.suit}
               </motion.div>
             );
           })}
@@ -338,8 +365,7 @@ export default function App() {
               <div key={i} style={styles.set}>
                 {set.map((c) => (
                   <span key={c.id} style={styles.setCard}>
-                    {c.value}
-                    {c.suit}
+                    {c.value}{c.suit}
                   </span>
                 ))}
               </div>
@@ -373,12 +399,10 @@ export default function App() {
           <button
             style={styles.dangerBtn}
             disabled={!canDiscard}
-            onClick={() =>
-              socket.emit("discard", {
-                room: game.room,
-                index: me.hand.findIndex((c) => c.id === selected[0])
-              })
-            }
+            onClick={() => {
+              const idx = me.hand.findIndex((c) => c.id === discardPick);
+              socket.emit("discard", { room: game.room, index: idx });
+            }}
           >
             {me.mustDiscard ? "🗑 Discard (Req)" : "🗑 Discard (Opt)"}
           </button>
