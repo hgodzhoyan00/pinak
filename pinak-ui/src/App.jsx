@@ -196,6 +196,9 @@ export default function App() {
 
   if (!me) return <p style={{ padding: 16 }}>Syncing…</p>;
 
+  // ✅ CHANGE: show top of open stack first (most recent discard)
+  const openTopFirst = [...game.open].reverse();
+
   /* ---------- GAME ---------- */
   return (
     <div style={{ ...styles.page, opacity: isMyTurn ? 1 : 0.55 }}>
@@ -266,10 +269,10 @@ export default function App() {
         </div>
 
         <div style={styles.openStack}>
-          {game.open.map((c, i) => (
+          {openTopFirst.map((c, i) => (
             <div
-              key={i}
-              onClick={() => selectOpen(i)}
+              key={c.id || i}
+              onClick={() => selectOpen(i)}   // i is now TOP-based
               style={{
                 ...styles.openCard,
                 background: i < openCount ? "#ffe599" : "#f2f2f2",
