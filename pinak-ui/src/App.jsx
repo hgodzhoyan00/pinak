@@ -83,7 +83,9 @@ function FanSet({ set, isTarget }) {
           </span>
         ))}
         {extra > 0 && (
-          <span style={{ ...styles.fanCard, background: "rgba(0,0,0,0.25)", color: "#fff" }}>+{extra}</span>
+          <span style={{ ...styles.fanCard, background: "rgba(0,0,0,0.25)", color: "#fff" }}>
+            +{extra}
+          </span>
         )}
       </div>
     </div>
@@ -134,7 +136,7 @@ function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick, compact 
                     sfxClick?.();
                     setTarget?.({ playerId: player.id, runIndex: i });
                   }}
-                  style={{ flex: "0 0 auto", cursor: "pointer" }}
+                  style={{ flex: "0 0 auto", cursor: "pointer", touchAction: "manipulation" }}
                   title="Tap to target this run"
                 >
                   <FanSet set={set} isTarget={isTarget} />
@@ -273,7 +275,6 @@ export default function App() {
         if (!owner || !owner.openedSets?.[target.runIndex]) setTarget(null);
       }
 
-      // reset “went out” guard whenever server says round isn’t over
       if (!state.roundOver) wentOutSentRef.current = false;
     });
 
@@ -294,7 +295,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [discardPick, target, soundOn]);
 
-    /* ---------- DERIVED ---------- */
+  /* ---------- DERIVED ---------- */
   const me = useMemo(() => game?.players?.find((p) => p.id === socket.id), [game]);
 
   const isMyTurn = useMemo(() => {
@@ -410,6 +411,17 @@ export default function App() {
     setOpenCount(0);
   }
 
+  function safeEmit(eventName, payload) {
+    // If buttons are clickable but nothing happens, this guard prevents “silent taps”
+    if (!socket.connected) {
+      setToast("Disconnected…");
+      window.clearTimeout(window.__pinakToastTimer);
+      window.__pinakToastTimer = window.setTimeout(() => setToast(""), 1400);
+      return;
+    }
+    socket.emit(eventName, payload);
+  }
+
   /* ---------- CONNECTION ---------- */
   if (!connected) return <h2 style={{ padding: 20, color: "#eaf2ff" }}>Connecting…</h2>;
 
@@ -457,7 +469,7 @@ export default function App() {
                 onClick={() => {
                   ensureAudio();
                   sfx.click();
-                  socket.emit("createRoom", { room, name, teamMode });
+                  safeEmit("createRoom", { room, name, teamMode });
                 }}
                 disabled={!name || !room}
               >
@@ -469,7 +481,7 @@ export default function App() {
                 onClick={() => {
                   ensureAudio();
                   sfx.click();
-                  socket.emit("joinRoom", { room, name });
+                  safeEmit("joinRoom", { room, name });
                 }}
                 disabled={!name || !room}
               >
@@ -511,10 +523,10 @@ export default function App() {
   const fanMax = 18;
   const fanCount = sortedHand.length || 1;
 
-  const handCardSize = { width: 50, height: 68, fontSize: 15, borderRadius: 12 };
-  const miniCardSizeStyle = { width: 46, height: 60, borderRadius: 12 };
+  const handCardSize = { width: 46, height: 64, fontSize: 14, borderRadius: 12 };
+  const miniCardSizeStyle = { width: 44, height: 58, borderRadius: 12 };
 
-  return (
+    return (
     <div style={styles.table}>
       {/* TOP BAR */}
       <div style={styles.topBar}>
@@ -608,7 +620,8 @@ export default function App() {
                       style={{
                         cursor: canSelectOpen ? "pointer" : "not-allowed",
                         opacity: canSelectOpen ? 1 : 0.45,
-                        flex: "0 0 auto"
+                        flex: "0 0 auto",
+                        touchAction: "manipulation"
                       }}
                     >
                       <MiniCard card={c} selected={i < openCount} sizeStyle={miniCardSizeStyle} />
@@ -616,7 +629,7 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* ✅ TWO SQUARE DRAW BUTTONS */}
+                {/* TWO SQUARE DRAW BUTTONS */}
                 <div style={styles.centerDrawRow}>
                   <button
                     style={styles.squareBtn}
@@ -624,7 +637,7 @@ export default function App() {
                     onClick={() => {
                       ensureAudio();
                       sfx.draw();
-                      socket.emit("drawClosed", { room: game.room });
+                      safeEmit("drawClosed", { room: game.room });
                     }}
                     title="Draw 1 from Closed"
                   >
@@ -638,7 +651,7 @@ export default function App() {
                     onClick={() => {
                       ensureAudio();
                       sfx.draw();
-                      socket.emit("drawOpen", { room: game.room, count: openCount });
+                      safeEmit("drawOpen", { room: game.room, count: openCount });
                     }}
                     title="Draw from Open"
                   >
@@ -687,7 +700,8 @@ export default function App() {
           </div>
         </div>
 
-   <div style={styles.rowBottom}>
+        {/* Bottom seat header row */}
+        <div style={styles.rowBottom}>
           <Seat
             pos="bottom"
             player={pBottom}
@@ -699,16 +713,17 @@ export default function App() {
             compact={false}
           />
 
-          <div style={styles.handPanel}>
-            <div style={styles.handHeader}>
-              <div style={{ fontWeight: 950 }}>Your Hand</div>
+          {/* ✅ HAND: tighter overlapping fan, no panel */}
+          <div style={styles.handZone}>
+            <div style={styles.handMetaRow}>
+              <div style={{ fontWeight: 950, opacity: 0.95 }}>Your Hand</div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <Badge>Run: {selected.length}</Badge>
                 <Badge>Discard: {discardPick ? "✓" : "—"}</Badge>
               </div>
             </div>
 
-            <motion.div variants={handVariants} initial="hidden" animate="show" style={styles.handFanRow}>
+            <motion.div variants={handVariants} initial="hidden" animate="show" style={styles.handFanRowTight}>
               <AnimatePresence initial={false}>
                 {sortedHand.map((c, idx) => {
                   const isRunSelected = selected.includes(c.id);
@@ -716,7 +731,7 @@ export default function App() {
 
                   const t = fanCount <= 1 ? 0 : idx / (fanCount - 1);
                   const rot = (t - 0.5) * 2 * fanMax;
-                  const lift = Math.abs(rot) * 0.18;
+                  const lift = Math.abs(rot) * 0.22;
 
                   return (
                     <motion.div
@@ -735,7 +750,11 @@ export default function App() {
                           : "1px solid rgba(0,0,0,0.22)",
                         rotate: rot,
                         y: lift,
-                        transformOrigin: "50% 90%"
+                        transformOrigin: "50% 90%",
+                        // ✅ overlap
+                        marginLeft: idx === 0 ? 0 : -18,
+                        zIndex: idx + 1,
+                        touchAction: "manipulation"
                       }}
                       onClick={() => toggleCard(c.id)}
                     >
@@ -754,7 +773,7 @@ export default function App() {
 
       {toast && <div style={styles.toast}>{toast}</div>}
 
-      {/* ✅ ACTION BAR: ONLY 4 BUTTONS, ONE LINE */}
+      {/* ACTION BAR: ONLY 4 BUTTONS, ONE LINE */}
       <div style={styles.stickyBar}>
         <div style={styles.stickyInner4}>
           <button
@@ -763,7 +782,7 @@ export default function App() {
             onClick={() => {
               ensureAudio();
               sfx.run();
-              socket.emit("openRun", { room: game.room, cardIds: selected });
+              safeEmit("openRun", { room: game.room, cardIds: selected });
               setSelected([]);
               setDiscardPick(null);
             }}
@@ -777,7 +796,7 @@ export default function App() {
             onClick={() => {
               ensureAudio();
               sfx.run();
-              socket.emit("addToRun", {
+              safeEmit("addToRun", {
                 room: game.room,
                 targetPlayer: target.playerId,
                 runIndex: target.runIndex,
@@ -797,7 +816,7 @@ export default function App() {
               ensureAudio();
               sfx.discard();
               const idx = me.hand.findIndex((c) => c.id === discardPick);
-              socket.emit("discard", { room: game.room, index: idx });
+              safeEmit("discard", { room: game.room, index: idx });
               setSelected([]);
               setDiscardPick(null);
             }}
@@ -811,7 +830,7 @@ export default function App() {
             onClick={() => {
               ensureAudio();
               sfx.end();
-              socket.emit("endTurn", { room: game.room });
+              safeEmit("endTurn", { room: game.room });
               setSelected([]);
               setDiscardPick(null);
               setTarget(null);
@@ -829,9 +848,9 @@ export default function App() {
 /* ---------- STYLES ---------- */
 const styles = {
   table: {
-    minHeight: "100vh",
+    height: "100svh",
     width: "100%",
-    overflowX: "hidden",
+    overflow: "hidden",
     boxSizing: "border-box",
     background:
       "radial-gradient(1200px 600px at 20% 0%, rgba(255,255,255,0.10), transparent 55%)," +
@@ -839,11 +858,11 @@ const styles = {
       "linear-gradient(180deg, #0b3b2e 0%, #06261e 60%, #041b15 100%)",
     color: stylesTokens.textStrong,
     paddingTop: 8,
-    paddingBottom: 92
+    paddingBottom: 84
   },
 
   rotateWrap: {
-    minHeight: "100vh",
+    minHeight: "100svh",
     display: "grid",
     placeItems: "center",
     padding: 16
@@ -887,7 +906,8 @@ const styles = {
     color: "#fff",
     fontWeight: 950,
     fontSize: 18,
-    cursor: "pointer"
+    cursor: "pointer",
+    touchAction: "manipulation"
   },
 
   cardSection: {
@@ -935,7 +955,7 @@ const styles = {
     gridTemplateRows: "auto 1fr auto",
     gap: 8,
     height: "calc(100svh - 160px)",
-    minHeight: 520
+    minHeight: 0
   },
 
   center: { position: "relative", width: "100%" },
@@ -961,15 +981,10 @@ const styles = {
     marginBottom: 10
   },
 
-  centerDrawRow: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-    marginBottom: 6
-  },
+  centerDrawRow: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 6 },
 
   squareBtn: {
-    height: 64,
+    height: 62,
     borderRadius: 14,
     border: "1px solid rgba(255,255,255,0.18)",
     background: "rgba(0,0,0,0.28)",
@@ -980,15 +995,11 @@ const styles = {
     display: "grid",
     placeItems: "center",
     boxShadow: "0 10px 22px rgba(0,0,0,0.16)",
-    userSelect: "none"
+    userSelect: "none",
+    touchAction: "manipulation"
   },
 
-  squareBtnLabel: {
-    fontSize: 12,
-    fontWeight: 900,
-    opacity: 0.9,
-    marginTop: -6
-  },
+  squareBtnLabel: { fontSize: 12, fontWeight: 900, opacity: 0.9, marginTop: -6 },
 
   centerDivider: { height: 1, background: "rgba(255,255,255,0.12)", margin: "10px 0" },
 
@@ -1008,7 +1019,7 @@ const styles = {
 
   seat: { position: "relative", width: "100%", maxWidth: "unset", pointerEvents: "auto" },
 
-  rowTop: { minHeight: 72 },
+  rowTop: { minHeight: 64 },
 
   rowMid: {
     display: "grid",
@@ -1021,7 +1032,7 @@ const styles = {
   midSide: { minWidth: 0 },
   midCenter: { minWidth: 0 },
 
-  rowBottom: { minHeight: 150, minWidth: 0 },
+  rowBottom: { minHeight: 0, minWidth: 0 },
 
   seatHeader: {
     display: "flex",
@@ -1049,25 +1060,10 @@ const styles = {
     paddingBottom: 6
   },
 
-  emptySets: {
-    color: stylesTokens.textMuted,
-    fontWeight: 900,
-    padding: "6px 2px"
-  },
+  emptySets: { color: stylesTokens.textMuted, fontWeight: 900, padding: "6px 2px" },
 
-  fanSet: {
-    flex: "0 0 auto",
-    borderRadius: 14,
-    padding: "8px 10px",
-    border: "1px solid rgba(255,255,255,0.12)"
-  },
-
-  fanSetRow: {
-    display: "flex",
-    gap: 6,
-    flexWrap: "nowrap",
-    alignItems: "center"
-  },
+  fanSet: { flex: "0 0 auto", borderRadius: 14, padding: "8px 10px", border: "1px solid rgba(255,255,255,0.12)" },
+  fanSetRow: { display: "flex", gap: 6, flexWrap: "nowrap", alignItems: "center" },
 
   fanCard: {
     width: 34,
@@ -1082,27 +1078,17 @@ const styles = {
     boxShadow: "0 10px 22px rgba(0,0,0,0.18)"
   },
 
-  /* Bottom area */
-  bottomArea: {
-    position: "relative",
-    left: "unset",
-    right: "unset",
-    bottom: "unset",
-    width: "100%",
-    minWidth: 0
-  },
-
-  handPanel: {
+  handZone: {
     marginTop: 8,
-    background: "rgba(255,255,255,0.10)",
-    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.10)",
     borderRadius: 16,
     padding: 10,
-    boxShadow: "0 14px 40px rgba(0,0,0,0.22)",
-    backdropFilter: "blur(10px)"
+    backdropFilter: "blur(10px)",
+    overflow: "hidden"
   },
 
-  handHeader: {
+  handMetaRow: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
@@ -1110,14 +1096,11 @@ const styles = {
     marginBottom: 8
   },
 
-  handFanRow: {
+  handFanRowTight: {
     display: "flex",
     justifyContent: "center",
-    gap: 8,
-    flexWrap: "nowrap",
-    overflowX: "auto",
-    WebkitOverflowScrolling: "touch",
-    paddingBottom: 10
+    alignItems: "flex-end",
+    paddingBottom: 2
   },
 
   card: {
@@ -1156,7 +1139,6 @@ const styles = {
     fontWeight: 950
   },
 
-  /* Buttons */
   primaryBtn: {
     padding: "12px 12px",
     borderRadius: 14,
@@ -1167,7 +1149,8 @@ const styles = {
     fontSize: 15,
     width: "100%",
     boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
-    cursor: "pointer"
+    cursor: "pointer",
+    touchAction: "manipulation"
   },
 
   secondaryBtn: {
@@ -1180,7 +1163,8 @@ const styles = {
     fontSize: 15,
     width: "100%",
     boxShadow: "0 10px 24px rgba(0,0,0,0.16)",
-    cursor: "pointer"
+    cursor: "pointer",
+    touchAction: "manipulation"
   },
 
   primaryBtnTiny: {
@@ -1194,7 +1178,8 @@ const styles = {
     padding: "0 10px",
     cursor: "pointer",
     boxShadow: "0 10px 22px rgba(0,0,0,0.16)",
-    whiteSpace: "nowrap"
+    whiteSpace: "nowrap",
+    touchAction: "manipulation"
   },
 
   secondaryBtnTiny: {
@@ -1208,7 +1193,8 @@ const styles = {
     padding: "0 10px",
     cursor: "pointer",
     boxShadow: "0 10px 22px rgba(0,0,0,0.14)",
-    whiteSpace: "nowrap"
+    whiteSpace: "nowrap",
+    touchAction: "manipulation"
   },
 
   dangerBtnTiny: {
@@ -1222,7 +1208,8 @@ const styles = {
     padding: "0 10px",
     cursor: "pointer",
     boxShadow: "0 10px 22px rgba(0,0,0,0.16)",
-    whiteSpace: "nowrap"
+    whiteSpace: "nowrap",
+    touchAction: "manipulation"
   },
 
   stickyBar: {
