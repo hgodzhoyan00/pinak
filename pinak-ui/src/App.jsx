@@ -187,6 +187,7 @@ export default function App() {
   const audioCtxRef = useRef(null);
   const lastHandSigRef = useRef("");
   const wentOutSentRef = useRef(false);
+  const toastTimerRef = useRef(null);
 
   const [isLandscape, setIsLandscape] = useState(false);
 
@@ -282,8 +283,8 @@ export default function App() {
       const m = msg || "Action rejected";
       setError(m);
       setToast(m);
-      window.clearTimeout(window.__pinakToastTimer);
-      window.__pinakToastTimer = window.setTimeout(() => setToast(""), 2200);
+      window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = window.setTimeout(() => setToast(""), 2200);
     });
 
     return () => {
@@ -415,8 +416,8 @@ export default function App() {
     // If buttons are clickable but nothing happens, this guard prevents “silent taps”
     if (!socket.connected) {
       setToast("Disconnected…");
-      window.clearTimeout(window.__pinakToastTimer);
-      window.__pinakToastTimer = window.setTimeout(() => setToast(""), 1400);
+      window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = window.setTimeout(() => setToast(""), 1400);
       return;
     }
     socket.emit(eventName, payload);
@@ -540,6 +541,7 @@ export default function App() {
             <div style={styles.miniLabel}>Turn</div>
             <div style={styles.title}>{isMyTurn ? "You" : game.players[game.turn]?.name}</div>
           </div>
+
           <button
             style={styles.soundBtn}
             onClick={() => {
@@ -674,7 +676,14 @@ export default function App() {
                           border: isTurnNow ? "1px solid rgba(120, 220, 255, 0.55)" : "1px solid transparent"
                         }}
                       >
-                        <span style={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <span
+                          style={{
+                            fontWeight: 950,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap"
+                          }}
+                        >
                           {p.name}
                         </span>
                         <span style={{ fontWeight: 950 }}>{p.score}</span>
@@ -700,7 +709,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Bottom seat header row */}
+        {/* BOTTOM */}
         <div style={styles.rowBottom}>
           <Seat
             pos="bottom"
@@ -713,17 +722,13 @@ export default function App() {
             compact={false}
           />
 
-          {/* ✅ HAND: tighter overlapping fan, no panel */}
-          <div style={styles.handZone}>
-            <div style={styles.handMetaRow}>
-              <div style={{ fontWeight: 950, opacity: 0.95 }}>Your Hand</div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <Badge>Run: {selected.length}</Badge>
-                <Badge>Discard: {discardPick ? "✓" : "—"}</Badge>
-              </div>
+          <div style={styles.handDock}>
+            <div style={styles.handDockMeta}>
+              <span>Run: {selected.length}</span>
+              <span>Discard: {discardPick ? "✓" : "—"}</span>
             </div>
 
-            <motion.div variants={handVariants} initial="hidden" animate="show" style={styles.handFanRowTight}>
+            <motion.div variants={handVariants} initial="hidden" animate="show" style={styles.handFanDock}>
               <AnimatePresence initial={false}>
                 {sortedHand.map((c, idx) => {
                   const isRunSelected = selected.includes(c.id);
@@ -731,30 +736,29 @@ export default function App() {
 
                   const t = fanCount <= 1 ? 0 : idx / (fanCount - 1);
                   const rot = (t - 0.5) * 2 * fanMax;
-                  const lift = Math.abs(rot) * 0.22;
+
+                  const drop = Math.abs(rot) * 0.32;
+                  const y = 22 - drop;
+                  const x = (t - 0.5) * 18;
 
                   return (
                     <motion.div
                       key={c.id}
                       variants={cardVariants}
-                      exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.12 } }}
-                      whileHover={!me.mustDiscard ? { scale: 1.04 } : {}}
                       style={{
                         ...styles.card,
                         ...handCardSize,
+                        rotate: rot,
+                        x,
+                        y,
+                        transformOrigin: "50% 95%",
                         background: cardFaceBg(c),
                         border: isDiscard
                           ? "2px solid #ff4d4d"
                           : isRunSelected
                           ? "2px solid rgba(255,255,255,0.78)"
                           : "1px solid rgba(0,0,0,0.22)",
-                        rotate: rot,
-                        y: lift,
-                        transformOrigin: "50% 90%",
-                        // ✅ overlap
-                        marginLeft: idx === 0 ? 0 : -18,
-                        zIndex: idx + 1,
-                        touchAction: "manipulation"
+                        zIndex: isDiscard ? 50 : isRunSelected ? 40 : idx
                       }}
                       onClick={() => toggleCard(c.id)}
                     >
@@ -773,7 +777,7 @@ export default function App() {
 
       {toast && <div style={styles.toast}>{toast}</div>}
 
-      {/* ACTION BAR: ONLY 4 BUTTONS, ONE LINE */}
+      {/* ACTION BAR */}
       <div style={styles.stickyBar}>
         <div style={styles.stickyInner4}>
           <button
@@ -844,7 +848,6 @@ export default function App() {
     </div>
   );
 }
-
 /* ---------- STYLES ---------- */
 const styles = {
   table: {
@@ -1247,5 +1250,29 @@ const styles = {
     maxWidth: 340,
     textAlign: "center",
     zIndex: 9999
+  },
+
+  handDock: {
+    position: "relative",
+    marginTop: 6
+  },
+
+  handDockMeta: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 12,
+    paddingRight: 6,
+    paddingBottom: 2,
+    fontWeight: 900,
+    opacity: 0.9
+  },
+
+  handFanDock: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "flex-end",
+    gap: 0,
+    overflow: "hidden",
+    minHeight: 86
   }
 };
