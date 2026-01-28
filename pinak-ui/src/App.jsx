@@ -746,9 +746,9 @@ export default function App() {
                   const t = fanCount <= 1 ? 0 : idx / (fanCount - 1);
                   const rot = (t - 0.5) * 2 * fanMax;
 
-                  const drop = Math.abs(rot) * 0.32;
-                  const y = 48 - drop;
-                  const x = (t - 0.5) * 18;
+                  const drop = Math.abs(rot) * dropFactor;
+                  const y = yLift - drop;
+                  const x = (t - 0.5) * xSpread;
 
                   return (
                     <motion.div
