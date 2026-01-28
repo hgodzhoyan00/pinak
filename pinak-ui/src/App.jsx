@@ -43,6 +43,7 @@ function MiniCard({ card, selected }) {
     <div
       style={{
         ...styles.miniCard,
+        ...(miniCardSize || {}),
         background: selected ? "rgba(255, 214, 102, 0.95)" : cardFaceBg(card),
         border: selected ? "1px solid rgba(0,0,0,0.25)" : "1px solid rgba(0,0,0,0.18)"
       }}
@@ -94,7 +95,7 @@ function FanSet({ set, isTarget }) {
 }
 
 /* ---------- SEAT ---------- */
-function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick }) {
+function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick, compact }) {
   if (!player) return null;
 
   const headerStyle = { ...styles.seatHeader, ...(isTurn ? styles.seatHeaderTurn : null) };
@@ -125,28 +126,30 @@ function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick }) {
         </div>
       </div>
 
-      <div style={styles.seatSetsRow}>
-        {player.openedSets?.length ? (
-          player.openedSets.map((set, i) => {
-            const isTarget = target?.playerId === player.id && target?.runIndex === i;
-            return (
-              <div
-                key={i}
-                onClick={() => {
-                  sfxClick?.();
-                  setTarget?.({ playerId: player.id, runIndex: i });
-                }}
-                style={{ flex: "0 0 auto", cursor: "pointer" }}
-                title="Tap to target this run"
-              >
-                <FanSet set={set} isTarget={isTarget} />
-              </div>
-            );
-          })
-        ) : (
-          <div style={styles.emptySets}>—</div>
-        )}
-      </div>
+      {!compact && (
+        <div style={styles.seatSetsRow}>
+          {player.openedSets?.length ? (
+            player.openedSets.map((set, i) => {
+              const isTarget = target?.playerId === player.id && target?.runIndex === i;
+              return (
+                <div
+                  key={i}
+                  onClick={() => {
+                    sfxClick?.();
+                    setTarget?.({ playerId: player.id, runIndex: i });
+                  }}
+                  style={{ flex: "0 0 auto", cursor: "pointer" }}
+                  title="Tap to target this run"
+                >
+                  <FanSet set={set} isTarget={isTarget} />
+                </div>
+              );
+            })
+          ) : (
+            <div style={styles.emptySets}>—</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -178,6 +181,15 @@ export default function App() {
   const audioCtxRef = useRef(null);
   const lastHandSigRef = useRef("");
 
+  const [isLandscape, setIsLandscape] = useState(false);
+
+  useEffect(() => {
+  const mq = window.matchMedia("(orientation: landscape)");
+  const update = () => setIsLandscape(mq.matches);
+  update();
+  mq.addEventListener?.("change", update);
+  return () => mq.removeEventListener?.("change", update);
+  }, []);
   /* ---------- SOUND HELPERS ---------- */
   function ensureAudio() {
     if (!audioCtxRef.current) {
@@ -483,6 +495,22 @@ export default function App() {
   // hand fan angles
   const fanMax = 18;
   const fanCount = sortedHand.length || 1;
+ // ---------- LANDSCAPE LAYOUT OVERRIDES ----------
+const tableAreaStyle = isLandscape
+  ? { ...styles.tableArea, height: "calc(100svh - 140px)", padding: "6px 10px" }
+  : styles.tableArea;
+
+const centerStyle = isLandscape
+  ? { ...styles.center, top: "52%", width: "min(720px, 96vw)" }
+  : styles.center;
+
+const cardSize = isLandscape
+  ? { width: 50, height: 68, fontSize: 15, borderRadius: 12 }
+  : null;
+
+const miniCardSize = isLandscape
+  ? { width: 46, height: 60, borderRadius: 12 }
+  : null;
 
   return (
     <div style={styles.table}>
@@ -525,7 +553,7 @@ export default function App() {
       )}
 
       {/* TABLE AREA (grid, no overlap) */}
-<div style={styles.tableArea}>
+<div style={tableAreaStyle}>
   {/* Row 1: Top seat */}
   <div style={styles.rowTop}>
     <Seat
@@ -536,6 +564,7 @@ export default function App() {
       target={target}
       setTarget={setTarget}
       sfxClick={sfx.click}
+      compact={isLandscape}
     />
   </div>
 
@@ -550,12 +579,13 @@ export default function App() {
         target={target}
         setTarget={setTarget}
         sfxClick={sfx.click}
+        compact={isLandscape}
       />
     </div>
 
     <div style={styles.midCenter}>
       {/* Center */}
-      <div style={styles.center}>
+      <div style={centerStyle}>
         {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
           <div style={styles.turnPill}>🔥 YOUR TURN</div>
         )}
@@ -644,6 +674,7 @@ export default function App() {
         target={target}
         setTarget={setTarget}
         sfxClick={sfx.click}
+        compact={isLandscape}
       />
     </div>
   </div>
@@ -658,6 +689,7 @@ export default function App() {
       target={target}
       setTarget={setTarget}
       sfxClick={sfx.click}
+      compact={false}
     />
 
     {/* Hand (your existing fan code) */}
@@ -688,6 +720,7 @@ export default function App() {
                 whileHover={!me.mustDiscard ? { scale: 1.04 } : {}}
                 style={{
                   ...styles.card,
+                  ...(cardSize || {}), //
                   background: cardFaceBg(c),
                   border: isDiscard
                     ? "2px solid #ff4d4d"
@@ -717,7 +750,7 @@ export default function App() {
 
       {/* ACTION BAR (compact) */}
       <div style={styles.stickyBar}>
-        <div style={styles.stickyInner}>
+        <div style={styles.stickyInnerStyle}>
           <button
             style={styles.secondaryBtnSmall}
             disabled={!canDraw}
