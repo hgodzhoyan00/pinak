@@ -527,14 +527,6 @@ export default function App() {
   const dropFactor = 0.45;
   const fanCount = sortedHand.length || 1;
 
-  // inside map:
-  const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
-  const rot = (t - 0.5) * 2 * fanMax;
-
-  const drop = Math.abs(rot) * dropFactor;
-  const y = yLift - drop;
-  const x = (t - 0.5) * xSpread;
-
   const handCardSize = { width: 46, height: 64, fontSize: 14, borderRadius: 12 };
   const miniCardSizeStyle = { width: 36, height: 50, borderRadius: 12 };
 
