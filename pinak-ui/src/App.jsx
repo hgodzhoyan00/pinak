@@ -870,13 +870,17 @@ const miniCardSize = isLandscape
 const styles = {
   table: {
     minHeight: "100vh",
+    width: "100%",
+    overflowX: "hidden",
+    boxSizing: "border-box",
+
     background:
       "radial-gradient(1200px 600px at 20% 0%, rgba(255,255,255,0.10), transparent 55%)," +
       "radial-gradient(900px 500px at 90% 20%, rgba(0,0,0,0.25), transparent 60%)," +
       "linear-gradient(180deg, #0b3b2e 0%, #06261e 60%, #041b15 100%)",
     color: stylesTokens.textStrong,
     paddingTop: 8,
-    paddingBottom: 86
+    paddingBottom: 110
   },
 
   pageLobby: {
@@ -1253,7 +1257,15 @@ rowBottom: { minHeight: 140, minWidth: 0 },
     boxShadow: "0 10px 22px rgba(0,0,0,0.16)",
     cursor: "pointer"
   },
+    actionBtn: {
+    flex: "0 0 auto",
+    minWidth: 120
+  },
 
+  actionBtnWide: {
+    flex: "0 0 auto",
+    minWidth: 140
+  },
   stickyBar: {
     position: "fixed",
     left: 0,
@@ -1271,9 +1283,11 @@ rowBottom: { minHeight: 140, minWidth: 0 },
   stickyInner: {
     maxWidth: 1100,
     margin: "0 auto",
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 8
+    display: "flex",
+    gap: 8,
+    overflowX: "auto",
+    WebkitOverflowScrolling: "touch",
+    paddingBottom: 6 
   },
 
   toast: {
