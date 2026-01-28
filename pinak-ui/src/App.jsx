@@ -801,7 +801,7 @@ const styles = {
       "linear-gradient(180deg, #0b3b2e 0%, #06261e 60%, #041b15 100%)",
     color: stylesTokens.textStrong,
     paddingTop: 8,
-    paddingBottom: 110
+    paddingBottom: 86
   },
 
   pageLobby: {
@@ -888,14 +888,14 @@ const styles = {
     maxWidth: 1100,
     margin: "0 auto",
     padding: "8px 14px",
-    height: "calc(100vh - 210px)", // reduced scroll pressure
-    minHeight: 540
+    height: "calc(100svh - 200px)", // reduced scroll pressure
+    minHeight: 520
   },
 
   center: {
     position: "absolute",
     left: "50%",
-    top: "56%", // push down to avoid overlap with top seat
+    top: "60%", // push down to avoid overlap with top seat
     transform: "translate(-50%, -50%)",
     width: "min(560px, 92vw)"
   },
@@ -904,7 +904,7 @@ const styles = {
     background: "rgba(255,255,255,0.10)",
     border: "1px solid rgba(255,255,255,0.14)",
     borderRadius: 16,
-    padding: 12,
+    padding: 10,
     boxShadow: "0 14px 40px rgba(0,0,0,0.22)",
     backdropFilter: "blur(10px)"
   },
@@ -914,7 +914,7 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
     gap: 10,
-    marginBottom: 10
+    marginBottom: 6
   },
 
   centerOpenRow: {
@@ -965,9 +965,9 @@ const styles = {
     pointerEvents: "auto"
   },
 
-  seat_top: { top: 6, left: "50%", transform: "translateX(-50%)" },
-  seat_left: { left: 0, top: "28%", transform: "translateY(-50%)" },
-  seat_right: { right: 0, top: "28%", transform: "translateY(-50%)" },
+  seat_top: { top: 4, left: "50%", transform: "translateX(-50%)" },
+  seat_left: { left: 0, top: "24%", transform: "translateY(-50%)" },
+  seat_right: { right: 0, top: "24%", transform: "translateY(-50%)" },
 
   seat_bottom: {
     position: "relative",
