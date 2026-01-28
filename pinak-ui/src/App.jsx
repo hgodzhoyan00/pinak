@@ -34,6 +34,7 @@ const socket = io(SERVER_URL, {
 /* ---------- SORT CONSTANTS ---------- */
 const SUIT_ORDER = ["♠", "♥", "♦", "♣"];
 const VALUE_ORDER = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+const miniCardSize = 52; // px — must match styles.miniCard width
 
 /* ---------- SUIT UI (COLOR + TINT) ---------- */
 function suitColor(suit) {
