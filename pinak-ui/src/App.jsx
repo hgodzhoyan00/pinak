@@ -1,31 +1,10 @@
-// ======= App.jsx (BLOCK 1/3) =======
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { motion, AnimatePresence } from "framer-motion";
-// iOS debug overlay (TEMP)
-if (typeof window !== "undefined") {
-  window.addEventListener("error", (e) => {
-    const msg =
-      `JS Error: ${e.message}\n` +
-      `${e.filename || ""}:${e.lineno || ""}:${e.colno || ""}`;
 
-    document.body.innerHTML =
-      `<pre style="white-space:pre-wrap;padding:14px;margin:0;background:#8b0000;color:#fff;font:14px/1.4 -apple-system,system-ui">` +
-      msg +
-      `</pre>`;
-  });
-
-  window.addEventListener("unhandledrejection", (e) => {
-    const msg = `Promise Rejection:\n${String(e.reason)}`;
-    document.body.innerHTML =
-      `<pre style="white-space:pre-wrap;padding:14px;margin:0;background:#8b0000;color:#fff;font:14px/1.4 -apple-system,system-ui">` +
-      msg +
-      `</pre>`;
-  });
-}
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 
-// iOS Safari stability: prefer websocket (avoids long-polling weirdness on some hosts)
+// iOS Safari stability: prefer websocket
 const socket = io(SERVER_URL, {
   transports: ["websocket"],
   upgrade: false
@@ -34,17 +13,16 @@ const socket = io(SERVER_URL, {
 /* ---------- SORT CONSTANTS ---------- */
 const SUIT_ORDER = ["♠", "♥", "♦", "♣"];
 const VALUE_ORDER = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
-const miniCardSize = 52; // px — must match styles.miniCard width
 
-/* ---------- SUIT UI (COLOR + TINT) ---------- */
+/* ---------- SUIT UI ---------- */
 function suitColor(suit) {
   if (suit === "♥" || suit === "♦") return "#ff3b3b";
-  return "#0c1a2a"; // ♠ ♣
+  return "#0c1a2a";
 }
 
 function cardFaceBg(card) {
   if (!card) return "rgba(255,255,255,0.92)";
-  if (card.value === "2") return "rgba(255, 247, 214, 0.96)"; // joker tint (gold)
+  if (card.value === "2") return "rgba(255, 247, 214, 0.96)";
   return "rgba(255,255,255,0.94)";
 }
 
@@ -59,12 +37,12 @@ function Badge({ children }) {
   return <span style={styles.badge}>{children}</span>;
 }
 
-function MiniCard({ card, selected }) {
+function MiniCard({ card, selected, sizeStyle }) {
   return (
     <div
       style={{
         ...styles.miniCard,
-        ...(miniCardSize || {}),
+        ...(sizeStyle || {}),
         background: selected ? "rgba(255, 214, 102, 0.95)" : cardFaceBg(card),
         border: selected ? "1px solid rgba(0,0,0,0.25)" : "1px solid rgba(0,0,0,0.18)"
       }}
@@ -79,7 +57,6 @@ function MiniCard({ card, selected }) {
 
 /* ---------- OPENED SETS (compact fan strip) ---------- */
 function FanSet({ set, isTarget }) {
-  // show first up to 7 cards, then +N
   const head = set.slice(0, 7);
   const extra = set.length - head.length;
 
@@ -106,9 +83,7 @@ function FanSet({ set, isTarget }) {
           </span>
         ))}
         {extra > 0 && (
-          <span style={{ ...styles.fanCard, background: "rgba(0,0,0,0.25)", color: "#fff" }}>
-            +{extra}
-          </span>
+          <span style={{ ...styles.fanCard, background: "rgba(0,0,0,0.25)", color: "#fff" }}>+{extra}</span>
         )}
       </div>
     </div>
@@ -132,7 +107,7 @@ function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick, compact 
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
-              maxWidth: pos === "bottom" ? 220 : 150
+              maxWidth: pos === "bottom" ? 240 : 160
             }}
           >
             {player.name}
@@ -175,6 +150,20 @@ function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick, compact 
   );
 }
 
+function RotateOverlay() {
+  return (
+    <div style={styles.rotateWrap}>
+      <div style={styles.rotateCard}>
+        <div style={{ fontSize: 44, lineHeight: 1 }}>📱↻</div>
+        <div style={{ fontWeight: 950, fontSize: 18, marginTop: 10 }}>Rotate to Landscape</div>
+        <div style={{ opacity: 0.85, marginTop: 6, fontWeight: 700 }}>
+          This game is locked to landscape mode.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   /* ---------- STATE ---------- */
   const [connected, setConnected] = useState(false);
@@ -187,30 +176,26 @@ export default function App() {
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
 
-  // run selection + open selection
   const [selected, setSelected] = useState([]);
   const [openCount, setOpenCount] = useState(0);
-
-  // discard is independent of run selection
   const [discardPick, setDiscardPick] = useState(null);
+  const [target, setTarget] = useState(null);
 
-  // add-to-run target
-  const [target, setTarget] = useState(null); // { playerId, runIndex }
-
-  // sounds
   const [soundOn, setSoundOn] = useState(true);
   const audioCtxRef = useRef(null);
   const lastHandSigRef = useRef("");
+  const wentOutSentRef = useRef(false);
 
   const [isLandscape, setIsLandscape] = useState(false);
 
   useEffect(() => {
-  const mq = window.matchMedia("(orientation: landscape)");
-  const update = () => setIsLandscape(mq.matches);
-  update();
-  mq.addEventListener?.("change", update);
-  return () => mq.removeEventListener?.("change", update);
+    const mq = window.matchMedia("(orientation: landscape)");
+    const update = () => setIsLandscape(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
   }, []);
+
   /* ---------- SOUND HELPERS ---------- */
   function ensureAudio() {
     if (!audioCtxRef.current) {
@@ -270,7 +255,6 @@ export default function App() {
       const meNext = state.players.find((p) => p.id === socket.id);
       const isMyTurnNext = state.players[state.turn]?.id === socket.id;
 
-      // keep openCount valid if open shrank
       const openLen = state.open?.length || 0;
       setOpenCount((prev) => (prev > openLen ? openLen : prev));
 
@@ -288,6 +272,9 @@ export default function App() {
         const owner = state.players.find((p) => p.id === target.playerId);
         if (!owner || !owner.openedSets?.[target.runIndex]) setTarget(null);
       }
+
+      // reset “went out” guard whenever server says round isn’t over
+      if (!state.roundOver) wentOutSentRef.current = false;
     });
 
     socket.on("errorMsg", (msg) => {
@@ -306,9 +293,8 @@ export default function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [discardPick, target, soundOn]);
-  // ======= App.jsx (BLOCK 2/3) =======
 
-  /* ---------- DERIVED ---------- */
+    /* ---------- DERIVED ---------- */
   const me = useMemo(() => game?.players?.find((p) => p.id === socket.id), [game]);
 
   const isMyTurn = useMemo(() => {
@@ -326,7 +312,6 @@ export default function App() {
 
   const canDiscard = canAct && isMyTurn && !!discardPick && (me.mustDiscard || me.canDiscard);
   const canEndTurn = canAct && isMyTurn && !me.mustDiscard;
-  const canEndRound = canAct && isMyTurn && me.hand?.length === 0;
 
   const canContinueRound = !!game && !!me && game.roundOver && !game.gameOver;
 
@@ -345,7 +330,7 @@ export default function App() {
     });
   }, [me?.hand]);
 
-  /* ---------- DEAL ANIMATION TRIGGER ---------- */
+  /* ---------- DEAL SOUND TRIGGER ---------- */
   useEffect(() => {
     if (!me?.hand) return;
     const sig = [...me.hand].map((c) => c.id).sort().join("|");
@@ -380,10 +365,27 @@ export default function App() {
     }
   }, [me, canAct, isMyTurn, selected, discardPick]);
 
+  /* ---------- AUTO END ROUND (no button) ---------- */
+  useEffect(() => {
+    if (!game || !me) return;
+    if (!canAct || !isMyTurn) return;
+    if (game.roundOver || game.gameOver) return;
+
+    const handEmpty = (me.hand?.length || 0) === 0;
+    if (!handEmpty) return;
+
+    if (wentOutSentRef.current) return;
+    wentOutSentRef.current = true;
+
+    ensureAudio();
+    sfx.run();
+    socket.emit("playerWentOut", { room: game.room });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game, me, canAct, isMyTurn]);
+
   /* ---------- HELPERS ---------- */
   function toggleCard(id) {
     if (!canAct || !isMyTurn) return;
-
     sfx.click();
     setSelected((sel) => (sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]));
     setDiscardPick(id);
@@ -392,10 +394,8 @@ export default function App() {
   function selectOpen(i) {
     if (!canSelectOpen) return;
     sfx.click();
-
     const openLen = game?.open?.length || 0;
-    const next = Math.min(i + 1, openLen);
-    setOpenCount(next);
+    setOpenCount(Math.min(i + 1, openLen));
   }
 
   function continueNextRound() {
@@ -412,6 +412,15 @@ export default function App() {
 
   /* ---------- CONNECTION ---------- */
   if (!connected) return <h2 style={{ padding: 20, color: "#eaf2ff" }}>Connecting…</h2>;
+
+  /* ---------- LANDSCAPE LOCK ---------- */
+  if (!isLandscape) {
+    return (
+      <div style={styles.table}>
+        <RotateOverlay />
+      </div>
+    );
+  }
 
   /* ---------- LOBBY ---------- */
   if (!game) {
@@ -434,19 +443,8 @@ export default function App() {
           </div>
 
           <div style={styles.cardSection}>
-            <input
-              style={styles.input}
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-
-            <input
-              style={styles.input}
-              placeholder="Room code"
-              value={room}
-              onChange={(e) => setRoom(e.target.value)}
-            />
+            <input style={styles.input} placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
+            <input style={styles.input} placeholder="Room code" value={room} onChange={(e) => setRoom(e.target.value)} />
 
             <label style={styles.checkboxRow}>
               <input type="checkbox" checked={teamMode} onChange={(e) => setTeamMode(e.target.checked)} />
@@ -467,7 +465,7 @@ export default function App() {
               </button>
 
               <button
-                style={{ ...styles.secondaryBtnSmall, ...styles.actionBtn }}
+                style={styles.secondaryBtn}
                 onClick={() => {
                   ensureAudio();
                   sfx.click();
@@ -490,10 +488,9 @@ export default function App() {
 
   if (!me) return <p style={{ padding: 16, color: stylesTokens.textStrong }}>Syncing…</p>;
 
-  // Open stack TOP-FIRST display
   const openTopFirst = [...game.open].reverse();
 
-  /* ---------- SEAT MAPPING (poker-table style) ---------- */
+  /* ---------- SEAT MAPPING ---------- */
   const players = game.players || [];
   const myIndex = Math.max(0, players.findIndex((p) => p.id === me.id));
   const n = players.length;
@@ -502,36 +499,20 @@ export default function App() {
   const pLeft = n >= 3 ? players[(myIndex + 1) % n] : null;
   const pTop = n >= 2 ? players[(myIndex + 2) % n] : null;
   const pRight = n >= 4 ? players[(myIndex + 3) % n] : null;
-
-  // For 2 players, put opponent at TOP
   const topPlayer = n === 2 ? players[(myIndex + 1) % n] : pTop;
 
   /* ---------- ANIM ---------- */
   const handVariants = { hidden: {}, show: { transition: { staggerChildren: 0.02 } } };
   const cardVariants = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { duration: 0.18 } }
+    hidden: { opacity: 0, y: 10, scale: 0.98 },
+    show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 420, damping: 28 } }
   };
 
-  // hand fan angles
   const fanMax = 18;
   const fanCount = sortedHand.length || 1;
- // ---------- LANDSCAPE LAYOUT OVERRIDES ----------
-const tableAreaStyle = isLandscape
-  ? { ...styles.tableArea, height: "calc(100svh - 140px)", padding: "6px 10px" }
-  : styles.tableArea;
 
-const centerStyle = isLandscape
-  ? { ...styles.center, top: "52%", width: "min(720px, 96vw)" }
-  : styles.center;
-
-const cardSize = isLandscape
-  ? { width: 50, height: 68, fontSize: 15, borderRadius: 12 }
-  : null;
-
-const miniCardSize = isLandscape
-  ? { width: 46, height: 60, borderRadius: 12 }
-  : null;
+  const handCardSize = { width: 50, height: 68, fontSize: 15, borderRadius: 12 };
+  const miniCardSizeStyle = { width: 46, height: 60, borderRadius: 12 };
 
   return (
     <div style={styles.table}>
@@ -573,219 +554,211 @@ const miniCardSize = isLandscape
         </div>
       )}
 
-      {/* TABLE AREA (grid, no overlap) */}
-<div style={tableAreaStyle}>
-  {/* Row 1: Top seat */}
-  <div style={styles.rowTop}>
-    <Seat
-      pos="top"
-      player={topPlayer}
-      isMe={false}
-      isTurn={game.players[game.turn]?.id === topPlayer?.id}
-      target={target}
-      setTarget={setTarget}
-      sfxClick={sfx.click}
-      compact={isLandscape}
-    />
-  </div>
+      {/* TABLE AREA */}
+      <div style={styles.tableArea}>
+        <div style={styles.rowTop}>
+          <Seat
+            pos="top"
+            player={topPlayer}
+            isMe={false}
+            isTurn={game.players[game.turn]?.id === topPlayer?.id}
+            target={target}
+            setTarget={setTarget}
+            sfxClick={sfx.click}
+            compact={true}
+          />
+        </div>
 
-  {/* Row 2: Left | Center | Right */}
-  <div style={styles.rowMid}>
-    <div style={styles.midSide}>
-      <Seat
-        pos="left"
-        player={pLeft}
-        isMe={false}
-        isTurn={game.players[game.turn]?.id === pLeft?.id}
-        target={target}
-        setTarget={setTarget}
-        sfxClick={sfx.click}
-        compact={isLandscape}
-      />
-    </div>
-
-    <div style={styles.midCenter}>
-      {/* Center */}
-      <div style={centerStyle}>
-        {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
-          <div style={styles.turnPill}>🔥 YOUR TURN</div>
-        )}
-
-        <div style={styles.centerCard}>
-          <div style={styles.centerHeader}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontWeight: 950 }}>Open Stack</span>
-              <Badge>Pick: {openCount}</Badge>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Badge>Target: {target ? "✓" : "—"}</Badge>
-            </div>
+        <div style={styles.rowMid}>
+          <div style={styles.midSide}>
+            <Seat
+              pos="left"
+              player={pLeft}
+              isMe={false}
+              isTurn={game.players[game.turn]?.id === pLeft?.id}
+              target={target}
+              setTarget={setTarget}
+              sfxClick={sfx.click}
+              compact={true}
+            />
           </div>
 
-          {/* Open stack horizontal scroll */}
-          <div style={styles.centerOpenRow}>
-            {openTopFirst.map((c, i) => (
-              <div
-                key={c.id || i}
-                onClick={() => selectOpen(i)}
-                style={{
-                  cursor: canSelectOpen ? "pointer" : "not-allowed",
-                  opacity: canSelectOpen ? 1 : 0.45,
-                  flex: "0 0 auto"
-                }}
-              >
-                <MiniCard card={c} selected={i < openCount} />
-              </div>
-            ))}
-          </div>
+          <div style={styles.midCenter}>
+            <div style={styles.center}>
+              {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
+                <div style={styles.turnPill}>🔥 YOUR TURN</div>
+              )}
 
-          <button
-            style={styles.primaryBtn}
-            disabled={!canDraw || openCount < 1 || openCount > (game.open?.length || 0)}
-            onClick={() => {
-              ensureAudio();
-              sfx.draw();
-              socket.emit("drawOpen", { room: game.room, count: openCount });
-            }}
-          >
-            Draw {openCount || ""} From Open
-          </button>
-
-          <div style={styles.centerDivider} />
-
-          <div style={styles.scoreMini}>
-            {game.players.map((p) => {
-              const isTurnNow = p.id === game.players[game.turn]?.id;
-              return (
-                <div
-                  key={p.id}
-                  style={{
-                    ...styles.scoreMiniRow,
-                    background: isTurnNow ? "rgba(92, 204, 255, 0.18)" : "transparent",
-                    border: isTurnNow
-                      ? "1px solid rgba(120, 220, 255, 0.55)"
-                      : "1px solid transparent"
-                  }}
-                >
-                  <span
-                    style={{
-                      fontWeight: 950,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap"
-                    }}
-                  >
-                    {p.name}
-                  </span>
-                  <span style={{ fontWeight: 950 }}>{p.score}</span>
+              <div style={styles.centerCard}>
+                <div style={styles.centerHeader}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontWeight: 950 }}>Open Stack</span>
+                    <Badge>Pick: {openCount}</Badge>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Badge>Target: {target ? "✓" : "—"}</Badge>
+                  </div>
                 </div>
-              );
-            })}
+
+                <div style={styles.centerOpenRow}>
+                  {openTopFirst.map((c, i) => (
+                    <div
+                      key={c.id || i}
+                      onClick={() => selectOpen(i)}
+                      style={{
+                        cursor: canSelectOpen ? "pointer" : "not-allowed",
+                        opacity: canSelectOpen ? 1 : 0.45,
+                        flex: "0 0 auto"
+                      }}
+                    >
+                      <MiniCard card={c} selected={i < openCount} sizeStyle={miniCardSizeStyle} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* ✅ TWO SQUARE DRAW BUTTONS */}
+                <div style={styles.centerDrawRow}>
+                  <button
+                    style={styles.squareBtn}
+                    disabled={!canDraw}
+                    onClick={() => {
+                      ensureAudio();
+                      sfx.draw();
+                      socket.emit("drawClosed", { room: game.room });
+                    }}
+                    title="Draw 1 from Closed"
+                  >
+                    🂠
+                    <div style={styles.squareBtnLabel}>Closed</div>
+                  </button>
+
+                  <button
+                    style={styles.squareBtn}
+                    disabled={!canDraw || openCount < 1 || openCount > (game.open?.length || 0)}
+                    onClick={() => {
+                      ensureAudio();
+                      sfx.draw();
+                      socket.emit("drawOpen", { room: game.room, count: openCount });
+                    }}
+                    title="Draw from Open"
+                  >
+                    🂡
+                    <div style={styles.squareBtnLabel}>Open</div>
+                  </button>
+                </div>
+
+                <div style={styles.centerDivider} />
+
+                <div style={styles.scoreMini}>
+                  {game.players.map((p) => {
+                    const isTurnNow = p.id === game.players[game.turn]?.id;
+                    return (
+                      <div
+                        key={p.id}
+                        style={{
+                          ...styles.scoreMiniRow,
+                          background: isTurnNow ? "rgba(92, 204, 255, 0.18)" : "transparent",
+                          border: isTurnNow ? "1px solid rgba(120, 220, 255, 0.55)" : "1px solid transparent"
+                        }}
+                      >
+                        <span style={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {p.name}
+                        </span>
+                        <span style={{ fontWeight: 950 }}>{p.score}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={styles.midSide}>
+            <Seat
+              pos="right"
+              player={pRight}
+              isMe={false}
+              isTurn={game.players[game.turn]?.id === pRight?.id}
+              target={target}
+              setTarget={setTarget}
+              sfxClick={sfx.click}
+              compact={true}
+            />
+          </div>
+        </div>
+
+   <div style={styles.rowBottom}>
+          <Seat
+            pos="bottom"
+            player={pBottom}
+            isMe={true}
+            isTurn={isMyTurn}
+            target={target}
+            setTarget={setTarget}
+            sfxClick={sfx.click}
+            compact={false}
+          />
+
+          <div style={styles.handPanel}>
+            <div style={styles.handHeader}>
+              <div style={{ fontWeight: 950 }}>Your Hand</div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <Badge>Run: {selected.length}</Badge>
+                <Badge>Discard: {discardPick ? "✓" : "—"}</Badge>
+              </div>
+            </div>
+
+            <motion.div variants={handVariants} initial="hidden" animate="show" style={styles.handFanRow}>
+              <AnimatePresence initial={false}>
+                {sortedHand.map((c, idx) => {
+                  const isRunSelected = selected.includes(c.id);
+                  const isDiscard = discardPick === c.id;
+
+                  const t = fanCount <= 1 ? 0 : idx / (fanCount - 1);
+                  const rot = (t - 0.5) * 2 * fanMax;
+                  const lift = Math.abs(rot) * 0.18;
+
+                  return (
+                    <motion.div
+                      key={c.id}
+                      variants={cardVariants}
+                      exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.12 } }}
+                      whileHover={!me.mustDiscard ? { scale: 1.04 } : {}}
+                      style={{
+                        ...styles.card,
+                        ...handCardSize,
+                        background: cardFaceBg(c),
+                        border: isDiscard
+                          ? "2px solid #ff4d4d"
+                          : isRunSelected
+                          ? "2px solid rgba(255,255,255,0.78)"
+                          : "1px solid rgba(0,0,0,0.22)",
+                        rotate: rot,
+                        y: lift,
+                        transformOrigin: "50% 90%"
+                      }}
+                      onClick={() => toggleCard(c.id)}
+                    >
+                      <span style={{ color: suitColor(c.suit), fontWeight: 950 }}>
+                        {c.value}
+                        {c.suit}
+                      </span>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </motion.div>
           </div>
         </div>
       </div>
-    </div>
-
-    <div style={styles.midSide}>
-      <Seat
-        pos="right"
-        player={pRight}
-        isMe={false}
-        isTurn={game.players[game.turn]?.id === pRight?.id}
-        target={target}
-        setTarget={setTarget}
-        sfxClick={sfx.click}
-        compact={isLandscape}
-      />
-    </div>
-  </div>
-
-  {/* Row 3: Bottom seat + hand */}
-  <div style={styles.rowBottom}>
-    <Seat
-      pos="bottom"
-      player={pBottom}
-      isMe={true}
-      isTurn={isMyTurn}
-      target={target}
-      setTarget={setTarget}
-      sfxClick={sfx.click}
-      compact={false}
-    />
-
-    {/* Hand (your existing fan code) */}
-    <div style={styles.handPanel}>
-      <div style={styles.handHeader}>
-        <div style={{ fontWeight: 950 }}>Your Hand</div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Badge>Run: {selected.length}</Badge>
-          <Badge>Discard: {discardPick ? "✓" : "—"}</Badge>
-        </div>
-      </div>
-
-      <motion.div variants={handVariants} initial="hidden" animate="show" style={styles.handFanRow}>
-        <AnimatePresence initial={false}>
-          {sortedHand.map((c, idx) => {
-            const isRunSelected = selected.includes(c.id);
-            const isDiscard = discardPick === c.id;
-
-            const t = fanCount <= 1 ? 0 : idx / (fanCount - 1);
-            const rot = (t - 0.5) * 2 * fanMax;
-            const lift = Math.abs(rot) * 0.18;
-
-            return (
-              <motion.div
-                key={c.id}
-                variants={cardVariants}
-                exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.12 } }}
-                whileHover={!me.mustDiscard ? { scale: 1.04 } : {}}
-                style={{
-                  ...styles.card,
-                  ...(cardSize || {}), //
-                  background: cardFaceBg(c),
-                  border: isDiscard
-                    ? "2px solid #ff4d4d"
-                    : isRunSelected
-                    ? "2px solid rgba(255,255,255,0.78)"
-                    : "1px solid rgba(0,0,0,0.22)",
-                  rotate: rot,
-                  y: lift,
-                  transformOrigin: "50% 90%"
-                }}
-                onClick={() => toggleCard(c.id)}
-              >
-                <span style={{ color: suitColor(c.suit), fontWeight: 950 }}>
-                  {c.value}
-                  {c.suit}
-                </span>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-      </motion.div>
-    </div>
-  </div>
-</div>
 
       {toast && <div style={styles.toast}>{toast}</div>}
 
-      {/* ACTION BAR (compact) */}
+      {/* ✅ ACTION BAR: ONLY 4 BUTTONS, ONE LINE */}
       <div style={styles.stickyBar}>
-        <div style={styles.stickyInner}>
+        <div style={styles.stickyInner4}>
           <button
-            style={{ ...styles.secondaryBtnSmall, ...styles.actionBtn }}
-            disabled={!canDraw}
-            onClick={() => {
-              ensureAudio();
-              sfx.draw();
-              socket.emit("drawClosed", { room: game.room });
-            }}
-          >
-            Draw Closed
-          </button>
-
-          <button
-            style={{ ...styles.primaryBtnSmall, ...styles.actionBtn }}
+            style={styles.primaryBtnTiny}
             disabled={!canCreateRun}
             onClick={() => {
               ensureAudio();
@@ -799,7 +772,7 @@ const miniCardSize = isLandscape
           </button>
 
           <button
-            style={{ ...styles.primaryBtnSmall, ...styles.actionBtn }}
+            style={styles.primaryBtnTiny}
             disabled={!canAddToRun}
             onClick={() => {
               ensureAudio();
@@ -818,7 +791,7 @@ const miniCardSize = isLandscape
           </button>
 
           <button
-            style={{ ...styles.dangerBtnSmall, ...styles.actionBtn }}
+            style={styles.dangerBtnTiny}
             disabled={!canDiscard}
             onClick={() => {
               ensureAudio();
@@ -833,7 +806,7 @@ const miniCardSize = isLandscape
           </button>
 
           <button
-            style={{ ...styles.secondaryBtnSmall, ...styles.actionBtn }}
+            style={styles.secondaryBtnTiny}
             disabled={!canEndTurn}
             onClick={() => {
               ensureAudio();
@@ -847,24 +820,11 @@ const miniCardSize = isLandscape
           >
             End Turn
           </button>
-
-          <button
-            style={{ ...styles.primaryBtnSmall, ...styles.actionBtn }}
-            disabled={!canEndRound}
-            onClick={() => {
-              ensureAudio();
-              sfx.run();
-              socket.emit("playerWentOut", { room: game.room });
-            }}
-          >
-            End Round
-          </button>
         </div>
       </div>
     </div>
   );
 }
-// ======= App.jsx (BLOCK 3/3) =======
 
 /* ---------- STYLES ---------- */
 const styles = {
@@ -873,22 +833,34 @@ const styles = {
     width: "100%",
     overflowX: "hidden",
     boxSizing: "border-box",
-
     background:
       "radial-gradient(1200px 600px at 20% 0%, rgba(255,255,255,0.10), transparent 55%)," +
       "radial-gradient(900px 500px at 90% 20%, rgba(0,0,0,0.25), transparent 60%)," +
       "linear-gradient(180deg, #0b3b2e 0%, #06261e 60%, #041b15 100%)",
     color: stylesTokens.textStrong,
     paddingTop: 8,
-    paddingBottom: 110
+    paddingBottom: 92
   },
 
-  pageLobby: {
-    padding: 14,
-    maxWidth: 520,
-    margin: "0 auto",
-    fontFamily: "system-ui"
+  rotateWrap: {
+    minHeight: "100vh",
+    display: "grid",
+    placeItems: "center",
+    padding: 16
   },
+
+  rotateCard: {
+    width: "min(420px, 92vw)",
+    textAlign: "center",
+    padding: 18,
+    borderRadius: 18,
+    background: "rgba(0,0,0,0.35)",
+    border: "1px solid rgba(255,255,255,0.14)",
+    boxShadow: "0 16px 50px rgba(0,0,0,0.28)",
+    backdropFilter: "blur(12px)"
+  },
+
+  pageLobby: { padding: 14, maxWidth: 520, margin: "0 auto", fontFamily: "system-ui" },
 
   topBar: {
     padding: "10px 14px",
@@ -904,13 +876,7 @@ const styles = {
   miniLabel: { fontSize: 12, opacity: 0.85, color: stylesTokens.textMuted, fontWeight: 800 },
   title: { fontSize: 18, fontWeight: 950, letterSpacing: 0.2, color: stylesTokens.textStrong },
 
-  headerRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    gap: 12,
-    marginBottom: 10
-  },
+  headerRow: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, marginBottom: 10 },
 
   soundBtn: {
     width: 44,
@@ -961,22 +927,18 @@ const styles = {
 
   checkboxRow: { display: "flex", alignItems: "center", marginTop: 4 },
 
-  /* Poker table layout */
- tableArea: {
-  maxWidth: 1100,
-  margin: "0 auto",
-  padding: "8px 12px",
-  display: "grid",
-  gridTemplateRows: "auto 1fr auto",
-  gap: 8,
-  height: "calc(100svh - 170px)",
-  minHeight: 520
-},
+  tableArea: {
+    maxWidth: 1100,
+    margin: "0 auto",
+    padding: "8px 12px",
+    display: "grid",
+    gridTemplateRows: "auto 1fr auto",
+    gap: 8,
+    height: "calc(100svh - 160px)",
+    minHeight: 520
+  },
 
-center: {
-  position: "relative",
-  width: "100%"
-},
+  center: { position: "relative", width: "100%" },
 
   centerCard: {
     background: "rgba(255,255,255,0.10)",
@@ -987,13 +949,7 @@ center: {
     backdropFilter: "blur(10px)"
   },
 
-  centerHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 6
-  },
+  centerHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 6 },
 
   centerOpenRow: {
     display: "flex",
@@ -1005,25 +961,40 @@ center: {
     marginBottom: 10
   },
 
-  centerDivider: {
-    height: 1,
-    background: "rgba(255,255,255,0.12)",
-    margin: "10px 0"
-  },
-
-  scoreMini: {
+  centerDrawRow: {
     display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 8
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+    marginBottom: 6
   },
 
-  scoreMiniRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    padding: "8px 10px",
-    borderRadius: 12,
-    gap: 10
+  squareBtn: {
+    height: 64,
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "rgba(0,0,0,0.28)",
+    color: "#fff",
+    fontWeight: 950,
+    fontSize: 18,
+    cursor: "pointer",
+    display: "grid",
+    placeItems: "center",
+    boxShadow: "0 10px 22px rgba(0,0,0,0.16)",
+    userSelect: "none"
   },
+
+  squareBtnLabel: {
+    fontSize: 12,
+    fontWeight: 900,
+    opacity: 0.9,
+    marginTop: -6
+  },
+
+  centerDivider: { height: 1, background: "rgba(255,255,255,0.12)", margin: "10px 0" },
+
+  scoreMini: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 },
+
+  scoreMiniRow: { display: "flex", justifyContent: "space-between", padding: "8px 10px", borderRadius: 12, gap: 10 },
 
   turnPill: {
     textAlign: "center",
@@ -1035,28 +1006,22 @@ center: {
     border: "1px solid rgba(255,255,255,0.14)"
   },
 
-  /* Seats */
- seat: {
-  position: "relative",
-  width: "100%",
-  maxWidth: "unset",
-  pointerEvents: "auto"
-},
+  seat: { position: "relative", width: "100%", maxWidth: "unset", pointerEvents: "auto" },
 
-rowTop: { minHeight: 80 },
+  rowTop: { minHeight: 72 },
 
-rowMid: {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr)",
-  gap: 8,
-  alignItems: "start",
-  minHeight: 0
-},
+  rowMid: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr)",
+    gap: 8,
+    alignItems: "start",
+    minHeight: 0
+  },
 
-midSide: { minWidth: 0 },
-midCenter: { minWidth: 0 },
+  midSide: { minWidth: 0 },
+  midCenter: { minWidth: 0 },
 
-rowBottom: { minHeight: 140, minWidth: 0 },
+  rowBottom: { minHeight: 150, minWidth: 0 },
 
   seatHeader: {
     display: "flex",
@@ -1105,34 +1070,34 @@ rowBottom: { minHeight: 140, minWidth: 0 },
   },
 
   fanCard: {
-    width: 36,
-    height: 50,
+    width: 34,
+    height: 46,
     borderRadius: 12,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
     border: "1px solid rgba(0,0,0,0.18)",
     fontWeight: 950,
-    fontSize: 13,
+    fontSize: 12,
     boxShadow: "0 10px 22px rgba(0,0,0,0.18)"
   },
 
   /* Bottom area */
- bottomArea: {
-  position: "relative",
-  left: "unset",
-  right: "unset",
-  bottom: "unset",
-  width: "100%",
-  minWidth: 0
-},
+  bottomArea: {
+    position: "relative",
+    left: "unset",
+    right: "unset",
+    bottom: "unset",
+    width: "100%",
+    minWidth: 0
+  },
 
   handPanel: {
-    marginTop: 10,
+    marginTop: 8,
     background: "rgba(255,255,255,0.10)",
     border: "1px solid rgba(255,255,255,0.14)",
     borderRadius: 16,
-    padding: 12,
+    padding: 10,
     boxShadow: "0 14px 40px rgba(0,0,0,0.22)",
     backdropFilter: "blur(10px)"
   },
@@ -1142,7 +1107,7 @@ rowBottom: { minHeight: 140, minWidth: 0 },
     justifyContent: "space-between",
     alignItems: "center",
     gap: 10,
-    marginBottom: 10
+    marginBottom: 8
   },
 
   handFanRow: {
@@ -1218,54 +1183,48 @@ rowBottom: { minHeight: 140, minWidth: 0 },
     cursor: "pointer"
   },
 
-  /* Compact action buttons */
-  primaryBtnSmall: {
-    padding: "10px 10px",
+  primaryBtnTiny: {
+    height: 44,
     borderRadius: 14,
     border: "1px solid rgba(255,255,255,0.18)",
     background: "linear-gradient(180deg, rgba(255,255,255,0.12), rgba(0,0,0,0.10))",
     color: "#fff",
     fontWeight: 950,
     fontSize: 13,
-    width: "100%",
+    padding: "0 10px",
+    cursor: "pointer",
     boxShadow: "0 10px 22px rgba(0,0,0,0.16)",
-    cursor: "pointer"
+    whiteSpace: "nowrap"
   },
 
-  secondaryBtnSmall: {
-    padding: "10px 10px",
+  secondaryBtnTiny: {
+    height: 44,
     borderRadius: 14,
     border: "1px solid rgba(255,255,255,0.18)",
     background: "rgba(0,0,0,0.28)",
     color: "#fff",
     fontWeight: 950,
     fontSize: 13,
-    width: "100%",
+    padding: "0 10px",
+    cursor: "pointer",
     boxShadow: "0 10px 22px rgba(0,0,0,0.14)",
-    cursor: "pointer"
+    whiteSpace: "nowrap"
   },
 
-  dangerBtnSmall: {
-    padding: "10px 10px",
+  dangerBtnTiny: {
+    height: 44,
     borderRadius: 14,
     border: "1px solid rgba(255, 77, 77, 0.65)",
     background: "linear-gradient(180deg, #ff3b3b, #b10000)",
     color: "#fff",
     fontWeight: 950,
     fontSize: 13,
-    width: "100%",
+    padding: "0 10px",
+    cursor: "pointer",
     boxShadow: "0 10px 22px rgba(0,0,0,0.16)",
-    cursor: "pointer"
-  },
-    actionBtn: {
-    flex: "0 0 auto",
-    minWidth: 120
+    whiteSpace: "nowrap"
   },
 
-  actionBtnWide: {
-    flex: "0 0 auto",
-    minWidth: 140
-  },
   stickyBar: {
     position: "fixed",
     left: 0,
@@ -1279,22 +1238,19 @@ rowBottom: { minHeight: 140, minWidth: 0 },
     paddingBottom: "calc(8px + env(safe-area-inset-bottom))"
   },
 
-  // 3 columns reduces height vs 2 columns
-  stickyInner: {
+  stickyInner4: {
     maxWidth: 1100,
     margin: "0 auto",
-    display: "flex",
-    gap: 8,
-    overflowX: "auto",
-    WebkitOverflowScrolling: "touch",
-    paddingBottom: 2 
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 8
   },
 
   toast: {
     position: "fixed",
     left: "50%",
     transform: "translateX(-50%)",
-    bottom: 140,
+    bottom: 92,
     background: "rgba(0,0,0,0.86)",
     color: "#fff",
     padding: "10px 12px",
