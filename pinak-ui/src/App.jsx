@@ -524,173 +524,194 @@ export default function App() {
         </div>
       )}
 
-      {/* TABLE AREA */}
-      <div style={styles.tableArea}>
-        <Seat
-          pos="top"
-          player={topPlayer}
-          isMe={false}
-          isTurn={game.players[game.turn]?.id === topPlayer?.id}
-          target={target}
-          setTarget={setTarget}
-          sfxClick={sfx.click}
-        />
+      {/* TABLE AREA (grid, no overlap) */}
+<div style={styles.tableArea}>
+  {/* Row 1: Top seat */}
+  <div style={styles.rowTop}>
+    <Seat
+      pos="top"
+      player={topPlayer}
+      isMe={false}
+      isTurn={game.players[game.turn]?.id === topPlayer?.id}
+      target={target}
+      setTarget={setTarget}
+      sfxClick={sfx.click}
+    />
+  </div>
 
-        <Seat
-          pos="left"
-          player={pLeft}
-          isMe={false}
-          isTurn={game.players[game.turn]?.id === pLeft?.id}
-          target={target}
-          setTarget={setTarget}
-          sfxClick={sfx.click}
-        />
+  {/* Row 2: Left | Center | Right */}
+  <div style={styles.rowMid}>
+    <div style={styles.midSide}>
+      <Seat
+        pos="left"
+        player={pLeft}
+        isMe={false}
+        isTurn={game.players[game.turn]?.id === pLeft?.id}
+        target={target}
+        setTarget={setTarget}
+        sfxClick={sfx.click}
+      />
+    </div>
 
-        <Seat
-          pos="right"
-          player={pRight}
-          isMe={false}
-          isTurn={game.players[game.turn]?.id === pRight?.id}
-          target={target}
-          setTarget={setTarget}
-          sfxClick={sfx.click}
-        />
+    <div style={styles.midCenter}>
+      {/* Center */}
+      <div style={styles.center}>
+        {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
+          <div style={styles.turnPill}>🔥 YOUR TURN</div>
+        )}
 
-        {/* Center */}
-        <div style={styles.center}>
-          {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
-            <div style={styles.turnPill}>🔥 YOUR TURN</div>
-          )}
-
-          <div style={styles.centerCard}>
-            <div style={styles.centerHeader}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontWeight: 950 }}>Open Stack</span>
-                <Badge>Pick: {openCount}</Badge>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Badge>Target: {target ? "✓" : "—"}</Badge>
-              </div>
+        <div style={styles.centerCard}>
+          <div style={styles.centerHeader}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontWeight: 950 }}>Open Stack</span>
+              <Badge>Pick: {openCount}</Badge>
             </div>
-
-            {/* Open stack horizontal scroll */}
-            <div style={styles.centerOpenRow}>
-              {openTopFirst.map((c, i) => (
-                <div
-                  key={c.id || i}
-                  onClick={() => selectOpen(i)}
-                  style={{
-                    cursor: canSelectOpen ? "pointer" : "not-allowed",
-                    opacity: canSelectOpen ? 1 : 0.45,
-                    flex: "0 0 auto"
-                  }}
-                >
-                  <MiniCard card={c} selected={i < openCount} />
-                </div>
-              ))}
-            </div>
-
-            <button
-              style={styles.primaryBtn}
-              disabled={!canDraw || openCount < 1 || openCount > (game.open?.length || 0)}
-              onClick={() => {
-                ensureAudio();
-                sfx.draw();
-                socket.emit("drawOpen", { room: game.room, count: openCount });
-              }}
-            >
-              Draw {openCount || ""} From Open
-            </button>
-
-            <div style={styles.centerDivider} />
-
-            <div style={styles.scoreMini}>
-              {game.players.map((p) => {
-                const isTurnNow = p.id === game.players[game.turn]?.id;
-                return (
-                  <div
-                    key={p.id}
-                    style={{
-                      ...styles.scoreMiniRow,
-                      background: isTurnNow ? "rgba(92, 204, 255, 0.18)" : "transparent",
-                      border: isTurnNow ? "1px solid rgba(120, 220, 255, 0.55)" : "1px solid transparent"
-                    }}
-                  >
-                    <span style={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {p.name}
-                    </span>
-                    <span style={{ fontWeight: 950 }}>{p.score}</span>
-                  </div>
-                );
-              })}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Badge>Target: {target ? "✓" : "—"}</Badge>
             </div>
           </div>
-        </div>
 
-        {/* Bottom */}
-        <div style={styles.bottomArea}>
-          <Seat
-            pos="bottom"
-            player={pBottom}
-            isMe={true}
-            isTurn={isMyTurn}
-            target={target}
-            setTarget={setTarget}
-            sfxClick={sfx.click}
-          />
-
-          {/* Hand */}
-          <div style={styles.handPanel}>
-            <div style={styles.handHeader}>
-              <div style={{ fontWeight: 950 }}>Your Hand</div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <Badge>Run: {selected.length}</Badge>
-                <Badge>Discard: {discardPick ? "✓" : "—"}</Badge>
+          {/* Open stack horizontal scroll */}
+          <div style={styles.centerOpenRow}>
+            {openTopFirst.map((c, i) => (
+              <div
+                key={c.id || i}
+                onClick={() => selectOpen(i)}
+                style={{
+                  cursor: canSelectOpen ? "pointer" : "not-allowed",
+                  opacity: canSelectOpen ? 1 : 0.45,
+                  flex: "0 0 auto"
+                }}
+              >
+                <MiniCard card={c} selected={i < openCount} />
               </div>
-            </div>
+            ))}
+          </div>
 
-            <motion.div variants={handVariants} initial="hidden" animate="show" style={styles.handFanRow}>
-              <AnimatePresence initial={false}>
-                {sortedHand.map((c, idx) => {
-                  const isRunSelected = selected.includes(c.id);
-                  const isDiscard = discardPick === c.id;
+          <button
+            style={styles.primaryBtn}
+            disabled={!canDraw || openCount < 1 || openCount > (game.open?.length || 0)}
+            onClick={() => {
+              ensureAudio();
+              sfx.draw();
+              socket.emit("drawOpen", { room: game.room, count: openCount });
+            }}
+          >
+            Draw {openCount || ""} From Open
+          </button>
 
-                  const t = fanCount <= 1 ? 0 : idx / (fanCount - 1);
-                  const rot = (t - 0.5) * 2 * fanMax;
-                  const lift = Math.abs(rot) * 0.18; // slight curve
+          <div style={styles.centerDivider} />
 
-                  return (
-                    <motion.div
-                      key={c.id}
-                      variants={cardVariants}
-                      exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.12 } }}
-                      whileHover={!me.mustDiscard ? { scale: 1.04 } : {}}
-                      style={{
-                        ...styles.card,
-                        background: cardFaceBg(c),
-                        border: isDiscard
-                          ? "2px solid #ff4d4d"
-                          : isRunSelected
-                          ? "2px solid rgba(255,255,255,0.78)"
-                          : "1px solid rgba(0,0,0,0.22)",
-                        rotate: rot,
-                        y: lift,
-                        transformOrigin: "50% 90%"
-                      }}
-                      onClick={() => toggleCard(c.id)}
-                    >
-                      <span style={{ color: suitColor(c.suit), fontWeight: 950 }}>
-                        {c.value}
-                        {c.suit}
-                      </span>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </motion.div>
+          <div style={styles.scoreMini}>
+            {game.players.map((p) => {
+              const isTurnNow = p.id === game.players[game.turn]?.id;
+              return (
+                <div
+                  key={p.id}
+                  style={{
+                    ...styles.scoreMiniRow,
+                    background: isTurnNow ? "rgba(92, 204, 255, 0.18)" : "transparent",
+                    border: isTurnNow
+                      ? "1px solid rgba(120, 220, 255, 0.55)"
+                      : "1px solid transparent"
+                  }}
+                >
+                  <span
+                    style={{
+                      fontWeight: 950,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    {p.name}
+                  </span>
+                  <span style={{ fontWeight: 950 }}>{p.score}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
+    </div>
+
+    <div style={styles.midSide}>
+      <Seat
+        pos="right"
+        player={pRight}
+        isMe={false}
+        isTurn={game.players[game.turn]?.id === pRight?.id}
+        target={target}
+        setTarget={setTarget}
+        sfxClick={sfx.click}
+      />
+    </div>
+  </div>
+
+  {/* Row 3: Bottom seat + hand */}
+  <div style={styles.rowBottom}>
+    <Seat
+      pos="bottom"
+      player={pBottom}
+      isMe={true}
+      isTurn={isMyTurn}
+      target={target}
+      setTarget={setTarget}
+      sfxClick={sfx.click}
+    />
+
+    {/* Hand (your existing fan code) */}
+    <div style={styles.handPanel}>
+      <div style={styles.handHeader}>
+        <div style={{ fontWeight: 950 }}>Your Hand</div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Badge>Run: {selected.length}</Badge>
+          <Badge>Discard: {discardPick ? "✓" : "—"}</Badge>
+        </div>
+      </div>
+
+      <motion.div variants={handVariants} initial="hidden" animate="show" style={styles.handFanRow}>
+        <AnimatePresence initial={false}>
+          {sortedHand.map((c, idx) => {
+            const isRunSelected = selected.includes(c.id);
+            const isDiscard = discardPick === c.id;
+
+            const t = fanCount <= 1 ? 0 : idx / (fanCount - 1);
+            const rot = (t - 0.5) * 2 * fanMax;
+            const lift = Math.abs(rot) * 0.18;
+
+            return (
+              <motion.div
+                key={c.id}
+                variants={cardVariants}
+                exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.12 } }}
+                whileHover={!me.mustDiscard ? { scale: 1.04 } : {}}
+                style={{
+                  ...styles.card,
+                  background: cardFaceBg(c),
+                  border: isDiscard
+                    ? "2px solid #ff4d4d"
+                    : isRunSelected
+                    ? "2px solid rgba(255,255,255,0.78)"
+                    : "1px solid rgba(0,0,0,0.22)",
+                  rotate: rot,
+                  y: lift,
+                  transformOrigin: "50% 90%"
+                }}
+                onClick={() => toggleCard(c.id)}
+              >
+                <span style={{ color: suitColor(c.suit), fontWeight: 950 }}>
+                  {c.value}
+                  {c.suit}
+                </span>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </motion.div>
+    </div>
+  </div>
+</div>
 
       {toast && <div style={styles.toast}>{toast}</div>}
 
@@ -883,22 +904,21 @@ const styles = {
   checkboxRow: { display: "flex", alignItems: "center", marginTop: 4 },
 
   /* Poker table layout */
-  tableArea: {
-    position: "relative",
-    maxWidth: 1100,
-    margin: "0 auto",
-    padding: "8px 14px",
-    height: "calc(100svh - 200px)", // reduced scroll pressure
-    minHeight: 520
-  },
+ tableArea: {
+  maxWidth: 1100,
+  margin: "0 auto",
+  padding: "8px 12px",
+  display: "grid",
+  gridTemplateRows: "auto 1fr auto",
+  gap: 8,
+  height: "calc(100svh - 170px)",
+  minHeight: 520
+},
 
-  center: {
-    position: "absolute",
-    left: "50%",
-    top: "60%", // push down to avoid overlap with top seat
-    transform: "translate(-50%, -50%)",
-    width: "min(560px, 92vw)"
-  },
+center: {
+  position: "relative",
+  width: "100%"
+},
 
   centerCard: {
     background: "rgba(255,255,255,0.10)",
@@ -958,26 +978,27 @@ const styles = {
   },
 
   /* Seats */
-  seat: {
-    position: "absolute",
-    width: "min(320px, 42vw)",
-    maxWidth: 340,
-    pointerEvents: "auto"
-  },
+ seat: {
+  position: "relative",
+  width: "100%",
+  maxWidth: "unset",
+  pointerEvents: "auto"
+},
 
-  seat_top: { top: 4, left: "50%", transform: "translateX(-50%)" },
-  seat_left: { left: 0, top: "24%", transform: "translateY(-50%)" },
-  seat_right: { right: 0, top: "24%", transform: "translateY(-50%)" },
+rowTop: { minHeight: 80 },
 
-  seat_bottom: {
-    position: "relative",
-    width: "100%",
-    maxWidth: "unset",
-    left: "unset",
-    right: "unset",
-    top: "unset",
-    transform: "none"
-  },
+rowMid: {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr)",
+  gap: 8,
+  alignItems: "start",
+  minHeight: 0
+},
+
+midSide: { minWidth: 0 },
+midCenter: { minWidth: 0 },
+
+rowBottom: { minHeight: 140, minWidth: 0 },
 
   seatHeader: {
     display: "flex",
@@ -1039,12 +1060,14 @@ const styles = {
   },
 
   /* Bottom area */
-  bottomArea: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0
-  },
+ bottomArea: {
+  position: "relative",
+  left: "unset",
+  right: "unset",
+  bottom: "unset",
+  width: "100%",
+  minWidth: 0
+},
 
   handPanel: {
     marginTop: 10,
