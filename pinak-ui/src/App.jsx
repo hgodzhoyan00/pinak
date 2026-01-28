@@ -728,7 +728,7 @@ export default function App() {
                   const rot = (t - 0.5) * 2 * fanMax;
 
                   const drop = Math.abs(rot) * 0.32;
-                  const y = 22 - drop;
+                  const y = 48 - drop;
                   const x = (t - 0.5) * 18;
 
                   return (
@@ -962,7 +962,7 @@ const styles = {
     padding: 10,
     boxShadow: "0 14px 40px rgba(0,0,0,0.22)",
     backdropFilter: "blur(10px)",
-    marginTop: -24,
+    marginTop: -36,
   },
 
   centerHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 6 },
@@ -1015,7 +1015,9 @@ const styles = {
     border: "1px solid rgba(255,255,255,0.12)",
     fontSize: 12,
     whiteSpace: "nowrap",
-    pointerEvents: "none"
+    pointerEvents: "none",
+    marginBottom: 6,
+    marginTop: -10
 },
 
   seat: { position: "relative", width: "100%", maxWidth: "unset", pointerEvents: "auto" },
@@ -1251,7 +1253,9 @@ const styles = {
   },
 
   handDock: {
-    position: "fixed",
+    position: "relative",
+    marginTop: 6,
+    paddingBottom: 34,
     left: 0,
     right: 0,
     bottom: 76, // sits just above action bar
@@ -1261,22 +1265,24 @@ const styles = {
 },
 
   handDockMeta: {
+    position: "absolute",
+    right: 10,
+    bottom: -8,              // pushes it down near the buttons
     display: "flex",
     justifyContent: "flex-end",
     gap: 12,
-    paddingRight: 6,
-    paddingBottom: 2,
     fontWeight: 900,
-    opacity: 0.9
-  },
+    opacity: 0.9,
+    pointerEvents: "none"    // prevents blocking taps
+},
 
   handFanDock: {
     position: "absolute",
     left: "50%",
-    bottom: 0,
+    bottom: -26,
     transform: "translateX(-50%)",
     width: "min(900px, 94vw)",
-    height: 110,
+    height: 140,
     overflow: "visible"
 },
 
