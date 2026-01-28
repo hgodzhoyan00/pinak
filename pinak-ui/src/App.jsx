@@ -525,7 +525,7 @@ export default function App() {
   const fanCount = sortedHand.length || 1;
 
   const handCardSize = { width: 46, height: 64, fontSize: 14, borderRadius: 12 };
-  const miniCardSizeStyle = { width: 44, height: 58, borderRadius: 12 };
+  const miniCardSizeStyle = { width: 36, height: 50, borderRadius: 12 };
 
     return (
     <div style={styles.table}>
@@ -632,9 +632,9 @@ export default function App() {
                 </div>
 
                 {/* TWO SQUARE DRAW BUTTONS */}
-                <div style={styles.centerDrawRow}>
+                <div style={styles.centerDrawRowCompact}>
                   <button
-                    style={styles.squareBtn}
+                    style={styles.drawBtnCompact}
                     disabled={!canDraw}
                     onClick={() => {
                       ensureAudio();
@@ -643,12 +643,11 @@ export default function App() {
                     }}
                     title="Draw 1 from Closed"
                   >
-                    🂠
-                    <div style={styles.squareBtnLabel}>Closed</div>
+                    🂠 <span style={styles.drawBtnText}>Closed</span>
                   </button>
 
                   <button
-                    style={styles.squareBtn}
+                    style={styles.drawBtnCompact}
                     disabled={!canDraw || openCount < 1 || openCount > (game.open?.length || 0)}
                     onClick={() => {
                       ensureAudio();
@@ -657,8 +656,7 @@ export default function App() {
                     }}
                     title="Draw from Open"
                   >
-                    🂡
-                    <div style={styles.squareBtnLabel}>Open</div>
+                    🂡 <span style={styles.drawBtnText}>Open</span>
                   </button>
                 </div>
 
@@ -748,6 +746,10 @@ export default function App() {
                       style={{
                         ...styles.card,
                         ...handCardSize,
+                        position: "absolute",
+                        left: "50%",
+                        bottom: 0,
+                        translateX: "-50%",
                         rotate: rot,
                         x,
                         y,
@@ -759,10 +761,10 @@ export default function App() {
                           ? "2px solid rgba(255,255,255,0.78)"
                           : "1px solid rgba(0,0,0,0.22)",
                         zIndex: isDiscard ? 50 : isRunSelected ? 40 : idx
-                      }}
+                      }}                      
                       onClick={() => toggleCard(c.id)}
                     >
-                      <span style={{ color: suitColor(c.suit), fontWeight: 950 }}>
+                     <span style={{ color: suitColor(c.suit), fontWeight: 950 }}>
                         {c.value}
                         {c.suit}
                       </span>
@@ -860,7 +862,7 @@ const styles = {
       "radial-gradient(900px 500px at 90% 20%, rgba(0,0,0,0.25), transparent 60%)," +
       "linear-gradient(180deg, #0b3b2e 0%, #06261e 60%, #041b15 100%)",
     color: stylesTokens.textStrong,
-    paddingTop: 8,
+    paddingTop: 0,
     paddingBottom: 84
   },
 
@@ -885,7 +887,7 @@ const styles = {
   pageLobby: { padding: 14, maxWidth: 520, margin: "0 auto", fontFamily: "system-ui" },
 
   topBar: {
-    padding: "10px 14px",
+    padding: "6px 12px",
     maxWidth: 1100,
     margin: "0 auto",
     fontFamily: "system-ui",
@@ -1011,14 +1013,19 @@ const styles = {
   scoreMiniRow: { display: "flex", justifyContent: "space-between", padding: "8px 10px", borderRadius: 12, gap: 10 },
 
   turnPill: {
-    textAlign: "center",
+    position: "absolute",
+    top: -6,
+    left: "50%",
+    transform: "translateX(-50%)",
     fontWeight: 950,
-    padding: "8px 10px",
+    padding: "4px 10px",
     borderRadius: 999,
-    marginBottom: 10,
-    background: "rgba(0,0,0,0.38)",
-    border: "1px solid rgba(255,255,255,0.14)"
-  },
+    background: "rgba(0,0,0,0.30)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    fontSize: 12,
+    whiteSpace: "nowrap",
+    pointerEvents: "none"
+},
 
   seat: { position: "relative", width: "100%", maxWidth: "unset", pointerEvents: "auto" },
 
@@ -1268,11 +1275,43 @@ const styles = {
   },
 
   handFanDock: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "flex-end",
-    gap: 0,
-    overflow: "hidden",
-    minHeight: 86
-  }
+  position: "relative",
+  height: 86,
+  width: "100%",
+  overflow: "hidden",
+  touchAction: "manipulation"
+  },
+
+  centerDrawRowCompact: {
+  display: "flex",
+  gap: 10,
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginBottom: 6
+},
+
+drawBtnCompact: {
+  flex: 1,
+  height: 40,
+  borderRadius: 12,
+  border: "1px solid rgba(255,255,255,0.18)",
+  background: "rgba(0,0,0,0.28)",
+  color: "#fff",
+  fontWeight: 950,
+  fontSize: 16,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  boxShadow: "0 10px 22px rgba(0,0,0,0.16)",
+  userSelect: "none",
+  touchAction: "manipulation"
+},
+
+drawBtnText: {
+  fontSize: 13,
+  fontWeight: 900,
+  opacity: 0.95
+}
 };
