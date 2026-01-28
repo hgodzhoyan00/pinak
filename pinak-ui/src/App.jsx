@@ -2,7 +2,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { motion, AnimatePresence } from "framer-motion";
+// iOS debug overlay (TEMP)
+if (typeof window !== "undefined") {
+  window.addEventListener("error", (e) => {
+    const msg =
+      `JS Error: ${e.message}\n` +
+      `${e.filename || ""}:${e.lineno || ""}:${e.colno || ""}`;
 
+    document.body.innerHTML =
+      `<pre style="white-space:pre-wrap;padding:14px;margin:0;background:#8b0000;color:#fff;font:14px/1.4 -apple-system,system-ui">` +
+      msg +
+      `</pre>`;
+  });
+
+  window.addEventListener("unhandledrejection", (e) => {
+    const msg = `Promise Rejection:\n${String(e.reason)}`;
+    document.body.innerHTML =
+      `<pre style="white-space:pre-wrap;padding:14px;margin:0;background:#8b0000;color:#fff;font:14px/1.4 -apple-system,system-ui">` +
+      msg +
+      `</pre>`;
+  });
+}
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 
 // iOS Safari stability: prefer websocket (avoids long-polling weirdness on some hosts)
