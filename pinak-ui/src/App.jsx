@@ -521,8 +521,19 @@ export default function App() {
     show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 420, damping: 28 } }
   };
 
-  const fanMax = 18;
+  const fanMax = 28;
+  const xSpread = 34;
+  const yLift = 34;
+  const dropFactor = 0.45;
   const fanCount = sortedHand.length || 1;
+
+  // inside map:
+  const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
+  const rot = (t - 0.5) * 2 * fanMax;
+
+  const drop = Math.abs(rot) * dropFactor;
+  const y = yLift - drop;
+  const x = (t - 0.5) * xSpread;
 
   const handCardSize = { width: 46, height: 64, fontSize: 14, borderRadius: 12 };
   const miniCardSizeStyle = { width: 36, height: 50, borderRadius: 12 };
@@ -746,7 +757,8 @@ export default function App() {
                       style={{
                         ...styles.card,
                         ...handCardSize,
-                        position: "absolute",
+                        position: "relative",
+                        padding: 6,
                         left: "50%",
                         bottom: 0,
                         translateX: "-50%",
@@ -764,10 +776,56 @@ export default function App() {
                       }}                      
                       onClick={() => toggleCard(c.id)}
                     >
-                     <span style={{ color: suitColor(c.suit), fontWeight: 950 }}>
-                        {c.value}
-                        {c.suit}
-                      </span>
+                     {/* top-left pip */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 6,
+                        left: 6,
+                        display: "flex",
+                        flexDirection: "column",
+                        lineHeight: 1,
+                        fontWeight: 950,
+                        fontSize: 12,
+                        color: suitColor(c.suit)
+                      }}
+                    >
+                      <span>{c.value}</span>
+                      <span style={{ marginTop: 2 }}>{c.suit}</span>
+                    </div>
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "grid",
+                        placeItems: "center",
+                        fontSize: 18,
+                        fontWeight: 900,
+                        opacity: 0.18,
+                        color: suitColor(c.suit),
+                        pointerEvents: "none"
+                      }}
+                    >
+                      {c.suit}
+                    </div>
+                    {/* bottom-right pip (rotated like a real card) */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: 6,
+                        right: 6,
+                        display: "flex",
+                        flexDirection: "column",
+                        lineHeight: 1,
+                        fontWeight: 950,
+                        fontSize: 12,
+                        color: suitColor(c.suit),
+                        transform: "rotate(180deg)"
+                      }}
+                    >
+                      <span>{c.value}</span>
+                      <span style={{ marginTop: 2 }}>{c.suit}</span>
+                    </div>
                     </motion.div>
                   );
                 })}
@@ -1288,8 +1346,8 @@ const styles = {
     left: "50%",
     bottom: 55,
     transform: "translateX(-50%)",
-    width: "min(900px, 94vw)",
-    height: 120,
+    width: "min(1100px, 98vw)",
+    height: 140,
     overflow: "visible"
 },
 
