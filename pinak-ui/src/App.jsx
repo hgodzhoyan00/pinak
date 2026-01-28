@@ -1,3 +1,4 @@
+// ======= App.jsx (BLOCK 1/3) =======
 import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { motion, AnimatePresence } from "framer-motion";
@@ -43,9 +44,7 @@ function MiniCard({ card, selected }) {
       style={{
         ...styles.miniCard,
         background: selected ? "rgba(255, 214, 102, 0.95)" : cardFaceBg(card),
-        border: selected
-          ? "1px solid rgba(0,0,0,0.25)"
-          : "1px solid rgba(0,0,0,0.18)"
+        border: selected ? "1px solid rgba(0,0,0,0.25)" : "1px solid rgba(0,0,0,0.18)"
       }}
     >
       <span style={{ color: suitColor(card.suit), fontWeight: 950 }}>
@@ -56,28 +55,64 @@ function MiniCard({ card, selected }) {
   );
 }
 
-function Seat({
-  pos,
-  player,
-  isMe,
-  isTurn,
-  target,
-  setTarget,
-  sfxClick,
-  showOpenedSets = true
-}) {
+/* ---------- OPENED SETS (compact fan strip) ---------- */
+function FanSet({ set, isTarget }) {
+  // show first up to 7 cards, then +N
+  const head = set.slice(0, 7);
+  const extra = set.length - head.length;
+
+  return (
+    <div
+      style={{
+        ...styles.fanSet,
+        outline: isTarget ? "2px solid rgba(255,255,255,0.92)" : "1px solid rgba(255,255,255,0.12)",
+        background: isTarget ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.16)"
+      }}
+    >
+      <div style={styles.fanSetRow}>
+        {head.map((c, idx) => (
+          <span
+            key={c.id || idx}
+            style={{
+              ...styles.fanCard,
+              background: cardFaceBg(c),
+              color: suitColor(c.suit)
+            }}
+          >
+            {c.value}
+            {c.suit}
+          </span>
+        ))}
+        {extra > 0 && (
+          <span style={{ ...styles.fanCard, background: "rgba(0,0,0,0.25)", color: "#fff" }}>
+            +{extra}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- SEAT ---------- */
+function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick }) {
   if (!player) return null;
 
-  const headerStyle = {
-    ...styles.seatHeader,
-    ...(isTurn ? styles.seatHeaderTurn : null)
-  };
+  const headerStyle = { ...styles.seatHeader, ...(isTurn ? styles.seatHeaderTurn : null) };
 
   return (
     <div style={{ ...styles.seat, ...styles[`seat_${pos}`] }}>
       <div style={headerStyle}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ fontWeight: 950, color: stylesTokens.textStrong }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <div
+            style={{
+              fontWeight: 950,
+              color: stylesTokens.textStrong,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              maxWidth: pos === "bottom" ? 220 : 150
+            }}
+          >
             {player.name}
             {isMe ? " (You)" : ""}
           </div>
@@ -90,46 +125,28 @@ function Seat({
         </div>
       </div>
 
-      {showOpenedSets && (
-        <div style={styles.seatSetsWrap}>
-          {player.openedSets?.length ? (
-            player.openedSets.map((set, i) => {
-              const isTarget = target?.playerId === player.id && target?.runIndex === i;
-              return (
-                <div
-                  key={i}
-                  onClick={() => {
-                    sfxClick?.();
-                    setTarget?.({ playerId: player.id, runIndex: i });
-                  }}
-                  style={{
-                    ...styles.runRow,
-                    outline: isTarget ? "2px solid rgba(255,255,255,0.90)" : "1px solid transparent",
-                    background: isTarget ? "rgba(255,255,255,0.08)" : "transparent"
-                  }}
-                  title="Tap to target this run"
-                >
-                  {set.map((c) => (
-                    <span
-                      key={c.id}
-                      style={{
-                        ...styles.runCard,
-                        color: suitColor(c.suit),
-                        background: cardFaceBg(c)
-                      }}
-                    >
-                      {c.value}
-                      {c.suit}
-                    </span>
-                  ))}
-                </div>
-              );
-            })
-          ) : (
-            <div style={styles.emptySets}>—</div>
-          )}
-        </div>
-      )}
+      <div style={styles.seatSetsRow}>
+        {player.openedSets?.length ? (
+          player.openedSets.map((set, i) => {
+            const isTarget = target?.playerId === player.id && target?.runIndex === i;
+            return (
+              <div
+                key={i}
+                onClick={() => {
+                  sfxClick?.();
+                  setTarget?.({ playerId: player.id, runIndex: i });
+                }}
+                style={{ flex: "0 0 auto", cursor: "pointer" }}
+                title="Tap to target this run"
+              >
+                <FanSet set={set} isTarget={isTarget} />
+              </div>
+            );
+          })
+        ) : (
+          <div style={styles.emptySets}>—</div>
+        )}
+      </div>
     </div>
   );
 }
@@ -152,9 +169,6 @@ export default function App() {
 
   // discard is independent of run selection
   const [discardPick, setDiscardPick] = useState(null);
-
-  // synced to server truth: me.canDiscard (after any draw)
-  const [hasDrawn, setHasDrawn] = useState(false);
 
   // add-to-run target
   const [target, setTarget] = useState(null); // { playerId, runIndex }
@@ -223,8 +237,6 @@ export default function App() {
       const meNext = state.players.find((p) => p.id === socket.id);
       const isMyTurnNext = state.players[state.turn]?.id === socket.id;
 
-      setHasDrawn(!!meNext?.canDiscard);
-
       // keep openCount valid if open shrank
       const openLen = state.open?.length || 0;
       setOpenCount((prev) => (prev > openLen ? openLen : prev));
@@ -261,6 +273,7 @@ export default function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [discardPick, target, soundOn]);
+  // ======= App.jsx (BLOCK 2/3) =======
 
   /* ---------- DERIVED ---------- */
   const me = useMemo(() => game?.players?.find((p) => p.id === socket.id), [game]);
@@ -403,14 +416,8 @@ export default function App() {
             />
 
             <label style={styles.checkboxRow}>
-              <input
-                type="checkbox"
-                checked={teamMode}
-                onChange={(e) => setTeamMode(e.target.checked)}
-              />
-              <span style={{ marginLeft: 8, color: stylesTokens.textStrong, fontWeight: 950 }}>
-                Team Mode
-              </span>
+              <input type="checkbox" checked={teamMode} onChange={(e) => setTeamMode(e.target.checked)} />
+              <span style={{ marginLeft: 8, color: stylesTokens.textStrong, fontWeight: 950 }}>Team Mode</span>
             </label>
 
             <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
@@ -425,6 +432,7 @@ export default function App() {
               >
                 Create
               </button>
+
               <button
                 style={styles.secondaryBtn}
                 onClick={() => {
@@ -459,26 +467,26 @@ export default function App() {
 
   const pBottom = players[myIndex];
   const pLeft = n >= 3 ? players[(myIndex + 1) % n] : null;
-  const pTop = n >= 2 ? players[(myIndex + 2) % n] : null; // for 2 players, this becomes the opponent (myIndex+1) if n==2? no, so handle:
+  const pTop = n >= 2 ? players[(myIndex + 2) % n] : null;
   const pRight = n >= 4 ? players[(myIndex + 3) % n] : null;
 
   // For 2 players, put opponent at TOP
   const topPlayer = n === 2 ? players[(myIndex + 1) % n] : pTop;
 
   /* ---------- ANIM ---------- */
-  const handVariants = {
-    hidden: {},
-    show: { transition: { staggerChildren: 0.03 } }
-  };
-
+  const handVariants = { hidden: {}, show: { transition: { staggerChildren: 0.02 } } };
   const cardVariants = {
-    hidden: { opacity: 0, y: 14, scale: 0.98 },
+    hidden: { opacity: 0, y: 12, scale: 0.98 },
     show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 420, damping: 28 } }
   };
 
+  // hand fan angles
+  const fanMax = 18;
+  const fanCount = sortedHand.length || 1;
+
   return (
     <div style={styles.table}>
-      {/* TOP BAR (room + turn + sound) */}
+      {/* TOP BAR */}
       <div style={styles.topBar}>
         <div>
           <div style={styles.miniLabel}>Room</div>
@@ -518,7 +526,6 @@ export default function App() {
 
       {/* TABLE AREA */}
       <div style={styles.tableArea}>
-        {/* Seats (opened sets always visible) */}
         <Seat
           pos="top"
           player={topPlayer}
@@ -549,7 +556,7 @@ export default function App() {
           sfxClick={sfx.click}
         />
 
-        {/* Center / “pot” area */}
+        {/* Center */}
         <div style={styles.center}>
           {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
             <div style={styles.turnPill}>🔥 YOUR TURN</div>
@@ -566,6 +573,7 @@ export default function App() {
               </div>
             </div>
 
+            {/* Open stack horizontal scroll */}
             <div style={styles.centerOpenRow}>
               {openTopFirst.map((c, i) => (
                 <div
@@ -573,7 +581,8 @@ export default function App() {
                   onClick={() => selectOpen(i)}
                   style={{
                     cursor: canSelectOpen ? "pointer" : "not-allowed",
-                    opacity: canSelectOpen ? 1 : 0.45
+                    opacity: canSelectOpen ? 1 : 0.45,
+                    flex: "0 0 auto"
                   }}
                 >
                   <MiniCard card={c} selected={i < openCount} />
@@ -607,7 +616,9 @@ export default function App() {
                       border: isTurnNow ? "1px solid rgba(120, 220, 255, 0.55)" : "1px solid transparent"
                     }}
                   >
-                    <span style={{ fontWeight: 950 }}>{p.name}</span>
+                    <span style={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {p.name}
+                    </span>
                     <span style={{ fontWeight: 950 }}>{p.score}</span>
                   </div>
                 );
@@ -616,9 +627,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* Bottom seat (You) */}
+        {/* Bottom */}
         <div style={styles.bottomArea}>
-          {/* Your opened sets always visible above your hand */}
           <Seat
             pos="bottom"
             player={pBottom}
@@ -629,7 +639,7 @@ export default function App() {
             sfxClick={sfx.click}
           />
 
-          {/* Your hand */}
+          {/* Hand */}
           <div style={styles.handPanel}>
             <div style={styles.handHeader}>
               <div style={{ fontWeight: 950 }}>Your Hand</div>
@@ -639,26 +649,32 @@ export default function App() {
               </div>
             </div>
 
-            <motion.div variants={handVariants} initial="hidden" animate="show" style={styles.handRow}>
+            <motion.div variants={handVariants} initial="hidden" animate="show" style={styles.handFanRow}>
               <AnimatePresence initial={false}>
-                {sortedHand.map((c) => {
+                {sortedHand.map((c, idx) => {
                   const isRunSelected = selected.includes(c.id);
                   const isDiscard = discardPick === c.id;
+
+                  const t = fanCount <= 1 ? 0 : idx / (fanCount - 1);
+                  const rot = (t - 0.5) * 2 * fanMax;
+                  const lift = Math.abs(rot) * 0.18; // slight curve
 
                   return (
                     <motion.div
                       key={c.id}
                       variants={cardVariants}
                       exit={{ opacity: 0, y: 10, scale: 0.98, transition: { duration: 0.12 } }}
-                      whileHover={!me.mustDiscard ? { scale: 1.05 } : {}}
+                      whileHover={!me.mustDiscard ? { scale: 1.04 } : {}}
                       style={{
                         ...styles.card,
                         background: cardFaceBg(c),
                         border: isDiscard
                           ? "2px solid #ff4d4d"
                           : isRunSelected
-                          ? "2px solid rgba(255,255,255,0.70)"
-                          : "1px solid rgba(0,0,0,0.22)"
+                          ? "2px solid rgba(255,255,255,0.78)"
+                          : "1px solid rgba(0,0,0,0.22)",
+                        transform: `rotate(${rot}deg) translateY(${lift}px)`,
+                        transformOrigin: "50% 90%"
                       }}
                       onClick={() => toggleCard(c.id)}
                     >
@@ -675,14 +691,13 @@ export default function App() {
         </div>
       </div>
 
-      {/* TOAST */}
       {toast && <div style={styles.toast}>{toast}</div>}
 
-      {/* ACTION BAR */}
+      {/* ACTION BAR (compact) */}
       <div style={styles.stickyBar}>
         <div style={styles.stickyInner}>
           <button
-            style={styles.secondaryBtn}
+            style={styles.secondaryBtnSmall}
             disabled={!canDraw}
             onClick={() => {
               ensureAudio();
@@ -694,7 +709,7 @@ export default function App() {
           </button>
 
           <button
-            style={styles.primaryBtn}
+            style={styles.primaryBtnSmall}
             disabled={!canCreateRun}
             onClick={() => {
               ensureAudio();
@@ -708,7 +723,7 @@ export default function App() {
           </button>
 
           <button
-            style={styles.primaryBtn}
+            style={styles.primaryBtnSmall}
             disabled={!canAddToRun}
             onClick={() => {
               ensureAudio();
@@ -723,11 +738,11 @@ export default function App() {
               setDiscardPick(null);
             }}
           >
-            Add To Run
+            Add
           </button>
 
           <button
-            style={styles.dangerBtn}
+            style={styles.dangerBtnSmall}
             disabled={!canDiscard}
             onClick={() => {
               ensureAudio();
@@ -738,11 +753,11 @@ export default function App() {
               setDiscardPick(null);
             }}
           >
-            {me.mustDiscard ? "🗑 Discard (Req)" : "🗑 Discard"}
+            {me.mustDiscard ? "Discard!" : "Discard"}
           </button>
 
           <button
-            style={styles.secondaryBtn}
+            style={styles.secondaryBtnSmall}
             disabled={!canEndTurn}
             onClick={() => {
               ensureAudio();
@@ -758,7 +773,7 @@ export default function App() {
           </button>
 
           <button
-            style={styles.primaryBtn}
+            style={styles.primaryBtnSmall}
             disabled={!canEndRound}
             onClick={() => {
               ensureAudio();
@@ -773,6 +788,7 @@ export default function App() {
     </div>
   );
 }
+// ======= App.jsx (BLOCK 3/3) =======
 
 /* ---------- STYLES ---------- */
 const styles = {
@@ -784,7 +800,7 @@ const styles = {
       "linear-gradient(180deg, #0b3b2e 0%, #06261e 60%, #041b15 100%)",
     color: stylesTokens.textStrong,
     paddingTop: 8,
-    paddingBottom: 140
+    paddingBottom: 110
   },
 
   pageLobby: {
@@ -828,7 +844,7 @@ const styles = {
     cursor: "pointer"
   },
 
-    cardSection: {
+  cardSection: {
     background: "rgba(255,255,255,0.10)",
     border: "1px solid rgba(255,255,255,0.14)",
     borderRadius: 14,
@@ -871,14 +887,14 @@ const styles = {
     maxWidth: 1100,
     margin: "0 auto",
     padding: "8px 14px",
-    height: "calc(100vh - 250px)", // leaves room for top bar + action bar
-    minHeight: 520
+    height: "calc(100vh - 210px)", // reduced scroll pressure
+    minHeight: 540
   },
 
   center: {
     position: "absolute",
     left: "50%",
-    top: "46%",
+    top: "56%", // push down to avoid overlap with top seat
     transform: "translate(-50%, -50%)",
     width: "min(560px, 92vw)"
   },
@@ -903,8 +919,10 @@ const styles = {
   centerOpenRow: {
     display: "flex",
     gap: 8,
-    flexWrap: "wrap",
-    justifyContent: "center",
+    flexWrap: "nowrap",
+    overflowX: "auto",
+    WebkitOverflowScrolling: "touch",
+    paddingBottom: 6,
     marginBottom: 10
   },
 
@@ -924,7 +942,8 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     padding: "8px 10px",
-    borderRadius: 12
+    borderRadius: 12,
+    gap: 10
   },
 
   turnPill: {
@@ -940,12 +959,12 @@ const styles = {
   /* Seats */
   seat: {
     position: "absolute",
-    width: "min(340px, 44vw)",
-    maxWidth: 360,
+    width: "min(320px, 42vw)",
+    maxWidth: 340,
     pointerEvents: "auto"
   },
 
-  seat_top: { top: 0, left: "50%", transform: "translateX(-50%)" },
+  seat_top: { top: 6, left: "50%", transform: "translateX(-50%)" },
   seat_left: { left: 0, top: "28%", transform: "translateY(-50%)" },
   seat_right: { right: 0, top: "28%", transform: "translateY(-50%)" },
 
@@ -976,12 +995,13 @@ const styles = {
     boxShadow: "0 0 0 2px rgba(120,220,255,0.18), 0 10px 24px rgba(0,0,0,0.25)"
   },
 
-  seatSetsWrap: {
+  seatSetsRow: {
     marginTop: 8,
-    maxHeight: 128,
-    overflowY: "auto",
+    display: "flex",
+    gap: 8,
+    overflowX: "auto",
     WebkitOverflowScrolling: "touch",
-    paddingRight: 6
+    paddingBottom: 6
   },
 
   emptySets: {
@@ -990,23 +1010,31 @@ const styles = {
     padding: "6px 2px"
   },
 
-  runRow: {
-    display: "flex",
-    gap: 6,
-    flexWrap: "wrap",
-    padding: 6,
-    borderRadius: 12,
-    marginBottom: 6,
-    cursor: "pointer"
+  fanSet: {
+    flex: "0 0 auto",
+    borderRadius: 14,
+    padding: "8px 10px",
+    border: "1px solid rgba(255,255,255,0.12)"
   },
 
-  runCard: {
+  fanSetRow: {
+    display: "flex",
+    gap: 6,
+    flexWrap: "nowrap",
+    alignItems: "center"
+  },
+
+  fanCard: {
+    width: 36,
+    height: 50,
+    borderRadius: 12,
     display: "inline-flex",
-    padding: "4px 8px",
-    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
     border: "1px solid rgba(0,0,0,0.18)",
     fontWeight: 950,
-    boxShadow: "0 6px 14px rgba(0,0,0,0.14)"
+    fontSize: 13,
+    boxShadow: "0 10px 22px rgba(0,0,0,0.18)"
   },
 
   /* Bottom area */
@@ -1035,11 +1063,14 @@ const styles = {
     marginBottom: 10
   },
 
-  handRow: {
+  handFanRow: {
     display: "flex",
-    flexWrap: "wrap",
-    gap: 10,
-    justifyContent: "center"
+    justifyContent: "center",
+    gap: 8,
+    flexWrap: "nowrap",
+    overflowX: "auto",
+    WebkitOverflowScrolling: "touch",
+    paddingBottom: 10
   },
 
   card: {
@@ -1053,10 +1084,10 @@ const styles = {
     fontWeight: 950,
     fontSize: 16,
     userSelect: "none",
-    boxShadow: "0 10px 24px rgba(0,0,0,0.22)"
+    boxShadow: "0 10px 24px rgba(0,0,0,0.22)",
+    flex: "0 0 auto"
   },
 
-  /* Center mini cards */
   miniCard: {
     width: 52,
     height: 68,
@@ -1105,16 +1136,43 @@ const styles = {
     cursor: "pointer"
   },
 
-  dangerBtn: {
-    padding: "12px 12px",
+  /* Compact action buttons */
+  primaryBtnSmall: {
+    padding: "10px 10px",
     borderRadius: 14,
-    border: "1px solid rgba(255, 77, 77, 0.6)",
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.12), rgba(0,0,0,0.10))",
+    color: "#fff",
+    fontWeight: 950,
+    fontSize: 13,
+    width: "100%",
+    boxShadow: "0 10px 22px rgba(0,0,0,0.16)",
+    cursor: "pointer"
+  },
+
+  secondaryBtnSmall: {
+    padding: "10px 10px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "rgba(0,0,0,0.28)",
+    color: "#fff",
+    fontWeight: 950,
+    fontSize: 13,
+    width: "100%",
+    boxShadow: "0 10px 22px rgba(0,0,0,0.14)",
+    cursor: "pointer"
+  },
+
+  dangerBtnSmall: {
+    padding: "10px 10px",
+    borderRadius: 14,
+    border: "1px solid rgba(255, 77, 77, 0.65)",
     background: "linear-gradient(180deg, #ff3b3b, #b10000)",
     color: "#fff",
     fontWeight: 950,
-    fontSize: 15,
+    fontSize: 13,
     width: "100%",
-    boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
+    boxShadow: "0 10px 22px rgba(0,0,0,0.16)",
     cursor: "pointer"
   },
 
@@ -1123,27 +1181,28 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    padding: 10,
+    padding: 8,
     background: "rgba(2, 10, 8, 0.78)",
     borderTop: "1px solid rgba(255,255,255,0.12)",
     backdropFilter: "blur(14px)",
     zIndex: 999,
-    paddingBottom: "calc(10px + env(safe-area-inset-bottom))"
+    paddingBottom: "calc(8px + env(safe-area-inset-bottom))"
   },
 
+  // 3 columns reduces height vs 2 columns
   stickyInner: {
     maxWidth: 1100,
     margin: "0 auto",
     display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 10
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 8
   },
 
   toast: {
     position: "fixed",
     left: "50%",
     transform: "translateX(-50%)",
-    bottom: 170,
+    bottom: 140,
     background: "rgba(0,0,0,0.86)",
     color: "#fff",
     padding: "10px 12px",
