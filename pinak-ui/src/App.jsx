@@ -1263,10 +1263,10 @@ const styles = {
   handDock: {
     position: "relative",
     marginTop: 6,
-    paddingBottom: 30,
+    paddingBottom: 24,
     left: 0,
     right: 0,
-    bottom: 76, // sits just above action bar
+    bottom: 24, // sits just above action bar
     height: 130,
     pointerEvents: "auto",
     zIndex: 200
