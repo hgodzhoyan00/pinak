@@ -709,17 +709,9 @@ export default function App() {
 
         {/* BOTTOM */}
         <div style={styles.rowBottom}>
-          <Seat
-            pos="bottom"
-            player={pBottom}
-            isMe={true}
-            isTurn={isMyTurn}
-            target={target}
-            setTarget={setTarget}
-            sfxClick={sfx.click}
-            compact={false}
-          />
-
+        
+        </div>
+      </div>
           <div style={styles.handDock}>
             <div style={styles.handDockMeta}>
               <span>Run: {selected.length}</span>
@@ -774,8 +766,6 @@ export default function App() {
               </AnimatePresence>
             </motion.div>
           </div>
-        </div>
-      </div>
 
       {toast && <div style={styles.toast}>{toast}</div>}
 
@@ -971,7 +961,8 @@ const styles = {
     borderRadius: 16,
     padding: 10,
     boxShadow: "0 14px 40px rgba(0,0,0,0.22)",
-    backdropFilter: "blur(10px)"
+    backdropFilter: "blur(10px)",
+    marginTop: -24,
   },
 
   centerHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 6 },
@@ -989,8 +980,8 @@ const styles = {
   centerDrawRow: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 6 },
 
   squareBtn: {
-    height: 62,
-    borderRadius: 14,
+    height: 46,
+    borderRadius: 12,
     border: "1px solid rgba(255,255,255,0.18)",
     background: "rgba(0,0,0,0.28)",
     color: "#fff",
@@ -1004,7 +995,7 @@ const styles = {
     touchAction: "manipulation"
   },
 
-  squareBtnLabel: { fontSize: 12, fontWeight: 900, opacity: 0.9, marginTop: -6 },
+  squareBtnLabel: { fontSize: 11, fontWeight: 900, opacity: 0.9, marginTop: -10 },
 
   centerDivider: { height: 1, background: "rgba(255,255,255,0.12)", margin: "10px 0" },
 
@@ -1260,9 +1251,14 @@ const styles = {
   },
 
   handDock: {
-    position: "relative",
-    marginTop: 6
-  },
+    position: "fixed",
+    left: 0,
+    right: 0,
+    bottom: 76, // sits just above action bar
+    height: 130,
+    pointerEvents: "auto",
+    zIndex: 200
+},
 
   handDockMeta: {
     display: "flex",
@@ -1275,12 +1271,14 @@ const styles = {
   },
 
   handFanDock: {
-  position: "relative",
-  height: 86,
-  width: "100%",
-  overflow: "hidden",
-  touchAction: "manipulation"
-  },
+    position: "absolute",
+    left: "50%",
+    bottom: 0,
+    transform: "translateX(-50%)",
+    width: "min(900px, 94vw)",
+    height: 110,
+    overflow: "visible"
+},
 
   centerDrawRowCompact: {
   display: "flex",
