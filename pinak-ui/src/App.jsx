@@ -529,32 +529,40 @@ export default function App() {
 
     return (
     <div style={styles.table}>
-      {/* TOP BAR */}
-      <div style={styles.topBar}>
-        <div>
-          <div style={styles.miniLabel}>Room</div>
-          <div style={styles.title}>{game.room}</div>
-        </div>
+    {/* TOP BAR */}
+<div style={styles.topBar}>
+  {/* Left */}
+  <div style={styles.topBarLeft}>
+    <div style={styles.miniLabel}>Room</div>
+    <div style={styles.title}>{game.room}</div>
+  </div>
 
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
-          <div style={{ textAlign: "right" }}>
-            <div style={styles.miniLabel}>Turn</div>
-            <div style={styles.title}>{isMyTurn ? "You" : game.players[game.turn]?.name}</div>
-          </div>
+  {/* Center */}
+  <div style={styles.topBarCenter}>
+    {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
+      <div style={styles.turnPillTop}>🔥 YOUR TURN</div>
+    )}
+  </div>
 
-          <button
-            style={styles.soundBtn}
-            onClick={() => {
-              ensureAudio();
-              setSoundOn((v) => !v);
-            }}
-            title="Sound"
-          >
-            {soundOn ? "🔊" : "🔇"}
-          </button>
-        </div>
-      </div>
+  {/* Right */}
+  <div style={styles.topBarRight}>
+    <div style={{ textAlign: "right" }}>
+      <div style={styles.miniLabel}>Turn</div>
+      <div style={styles.title}>{isMyTurn ? "You" : game.players[game.turn]?.name}</div>
+    </div>
 
+    <button
+      style={styles.soundBtn}
+      onClick={() => {
+        ensureAudio();
+        setSoundOn((v) => !v);
+      }}
+      title="Sound"
+    >
+      {soundOn ? "🔊" : "🔇"}
+    </button>
+  </div>
+</div>
       {/* BANNER */}
       {(game.gameOver || game.roundOver) && (
         <div style={styles.bannerNeutral}>
@@ -1267,7 +1275,7 @@ const styles = {
   handDockMeta: {
     position: "absolute",
     right: 10,
-    bottom: -8,              // pushes it down near the buttons
+    bottom: 44,              // pushes it down near the buttons
     display: "flex",
     justifyContent: "flex-end",
     gap: 12,
@@ -1279,10 +1287,10 @@ const styles = {
   handFanDock: {
     position: "absolute",
     left: "50%",
-    bottom: -26,
+    bottom: 55,
     transform: "translateX(-50%)",
     width: "min(900px, 94vw)",
-    height: 140,
+    height: 120,
     overflow: "visible"
 },
 
@@ -1317,5 +1325,29 @@ drawBtnText: {
   fontSize: 13,
   fontWeight: 900,
   opacity: 0.95
-}
+},
+topBar: {
+  padding: "8px 14px",
+  maxWidth: 1100,
+  margin: "0 auto",
+  fontFamily: "system-ui",
+  display: "grid",
+  gridTemplateColumns: "1fr auto 1fr",
+  alignItems: "end",
+  gap: 10
+},
+
+topBarLeft: { justifySelf: "start" },
+topBarCenter: { justifySelf: "center", alignSelf: "center" },
+topBarRight: { justifySelf: "end", display: "flex", alignItems: "flex-end", gap: 10 },
+
+turnPillTop: {
+  fontWeight: 950,
+  padding: "8px 12px",
+  borderRadius: 999,
+  background: "rgba(0,0,0,0.38)",
+  border: "1px solid rgba(255,255,255,0.14)",
+  whiteSpace: "nowrap"
+},
+
 };
