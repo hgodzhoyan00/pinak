@@ -1263,7 +1263,7 @@ const styles = {
   handDock: {
     position: "relative",
     marginTop: 6,
-    paddingBottom: 34,
+    paddingBottom: 40,
     left: 0,
     right: 0,
     bottom: 76, // sits just above action bar
@@ -1275,7 +1275,7 @@ const styles = {
   handDockMeta: {
     position: "absolute",
     right: 10,
-    bottom: 44,              // pushes it down near the buttons
+    bottom: 48,              // pushes it down near the buttons
     display: "flex",
     justifyContent: "flex-end",
     gap: 12,
