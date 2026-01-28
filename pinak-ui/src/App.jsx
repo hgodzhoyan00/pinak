@@ -467,7 +467,7 @@ export default function App() {
               </button>
 
               <button
-                style={styles.secondaryBtn}
+                style={{ ...styles.secondaryBtnSmall, ...styles.actionBtn }}
                 onClick={() => {
                   ensureAudio();
                   sfx.click();
@@ -771,9 +771,9 @@ const miniCardSize = isLandscape
 
       {/* ACTION BAR (compact) */}
       <div style={styles.stickyBar}>
-        <div style={styles.stickyInnerStyle}>
+        <div style={styles.stickyInner}>
           <button
-            style={styles.secondaryBtnSmall}
+            style={{ ...styles.secondaryBtnSmall, ...styles.actionBtn }}
             disabled={!canDraw}
             onClick={() => {
               ensureAudio();
@@ -785,7 +785,7 @@ const miniCardSize = isLandscape
           </button>
 
           <button
-            style={styles.primaryBtnSmall}
+            style={{ ...styles.primaryBtnSmall, ...styles.actionBtn }}
             disabled={!canCreateRun}
             onClick={() => {
               ensureAudio();
@@ -799,7 +799,7 @@ const miniCardSize = isLandscape
           </button>
 
           <button
-            style={styles.primaryBtnSmall}
+            style={{ ...styles.primaryBtnSmall, ...styles.actionBtn }}
             disabled={!canAddToRun}
             onClick={() => {
               ensureAudio();
@@ -818,7 +818,7 @@ const miniCardSize = isLandscape
           </button>
 
           <button
-            style={styles.dangerBtnSmall}
+            style={{ ...styles.dangerBtnSmall, ...styles.actionBtn }}
             disabled={!canDiscard}
             onClick={() => {
               ensureAudio();
@@ -833,7 +833,7 @@ const miniCardSize = isLandscape
           </button>
 
           <button
-            style={styles.secondaryBtnSmall}
+            style={{ ...styles.secondaryBtnSmall, ...styles.actionBtn }}
             disabled={!canEndTurn}
             onClick={() => {
               ensureAudio();
@@ -849,7 +849,7 @@ const miniCardSize = isLandscape
           </button>
 
           <button
-            style={styles.primaryBtnSmall}
+            style={{ ...styles.primaryBtnSmall, ...styles.actionBtn }}
             disabled={!canEndRound}
             onClick={() => {
               ensureAudio();
@@ -1287,7 +1287,7 @@ rowBottom: { minHeight: 140, minWidth: 0 },
     gap: 8,
     overflowX: "auto",
     WebkitOverflowScrolling: "touch",
-    paddingBottom: 6 
+    paddingBottom: 2 
   },
 
   toast: {
