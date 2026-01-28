@@ -1274,7 +1274,7 @@ const styles = {
   handDockMeta: {
     position: "absolute",
     right: 10,
-    bottom: 64,              // pushes it down near the buttons
+    bottom: 74,              // pushes it down near the buttons
     display: "flex",
     justifyContent: "flex-end",
     gap: 12,
