@@ -856,7 +856,7 @@ return (
   // THIS is the spacing that prevents cards from blocking each other
   const hitX = (t - 0.5) * xSpread;
 
-  const z = isDiscard ? 5000 : isRunSelected ? 4000 : 1000 + idx;
+  const z = 1000 + idx; // stable hitbox stacking so taps never get blocked
 
   return (
     <div
@@ -891,7 +891,8 @@ return (
             ? "2px solid #ff4d4d"
             : isRunSelected
             ? "2px solid rgba(255,255,255,0.78)"
-            : "1px solid rgba(0,0,0,0.22)"
+            : "1px solid rgba(0,0,0,0.22)",
+            pointerEvents: "none"
         }}
       >
         {/* top-left pip */}
