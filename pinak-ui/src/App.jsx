@@ -56,24 +56,24 @@ function MiniCard({ card, selected, sizeStyle }) {
 }
 
 /* ---------- OPENED SETS (compact fan strip) ---------- */
-function FanSet({ set, isTarget }) {
-  const head = set.slice(0, 7);
+function FanSet({ set, isTarget, compact }) {
+  const head = set.slice(0, compact ? 5 : 7);
   const extra = set.length - head.length;
 
   return (
     <div
       style={{
-        ...styles.fanSet,
+        ...(compact ? styles.fanSetCompact : styles.fanSet),
         outline: isTarget ? "2px solid rgba(255,255,255,0.92)" : "1px solid rgba(255,255,255,0.12)",
         background: isTarget ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.16)"
       }}
     >
-      <div style={styles.fanSetRow}>
+      <div style={compact ? styles.fanSetRowCompact : styles.fanSetRow}>
         {head.map((c, idx) => (
           <span
             key={c.id || idx}
             style={{
-              ...styles.fanCard,
+              ...(compact ? styles.fanCardCompact : styles.fanCard),
               background: cardFaceBg(c),
               color: suitColor(c.suit)
             }}
@@ -82,8 +82,15 @@ function FanSet({ set, isTarget }) {
             {c.suit}
           </span>
         ))}
+
         {extra > 0 && (
-          <span style={{ ...styles.fanCard, background: "rgba(0,0,0,0.25)", color: "#fff" }}>
+          <span
+            style={{
+              ...(compact ? styles.fanCardCompact : styles.fanCard),
+              background: "rgba(0,0,0,0.25)",
+              color: "#fff"
+            }}
+          >
             +{extra}
           </span>
         )}
@@ -91,7 +98,6 @@ function FanSet({ set, isTarget }) {
     </div>
   );
 }
-
 /* ---------- SEAT ---------- */
 function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick, compact }) {
   if (!player) return null;
@@ -125,29 +131,28 @@ function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick, compact 
       </div>
 
       {!compact && (
-        <div style={styles.seatSetsRow}>
-          {player.openedSets?.length ? (
-            player.openedSets.map((set, i) => {
-              const isTarget = target?.playerId === player.id && target?.runIndex === i;
-              return (
-                <div
-                  key={i}
-                  onClick={() => {
-                    sfxClick?.();
-                    setTarget?.({ playerId: player.id, runIndex: i });
-                  }}
-                  style={{ flex: "0 0 auto", cursor: "pointer", touchAction: "manipulation" }}
-                  title="Tap to target this run"
-                >
-                  <FanSet set={set} isTarget={isTarget} />
-                </div>
-              );
-            })
-          ) : (
-            <div style={styles.emptySets}>—</div>
-          )}
+<div style={compact ? styles.seatSetsRowCompact : styles.seatSetsRow}>
+  {player.openedSets?.length ? (
+    player.openedSets.map((set, i) => {
+      const isTarget = target?.playerId === player.id && target?.runIndex === i;
+      return (
+        <div
+          key={i}
+          onClick={() => {
+            sfxClick?.();
+            setTarget?.({ playerId: player.id, runIndex: i });
+          }}
+          style={{ flex: "0 0 auto", cursor: "pointer", touchAction: "manipulation" }}
+          title="Tap to target this run"
+        >
+          <FanSet set={set} isTarget={isTarget} compact={compact} />
         </div>
-      )}
+      );
+    })
+  ) : (
+    <div style={styles.emptySets}>—</div>
+  )}
+</div>      )}
     </div>
   );
 }
@@ -719,7 +724,16 @@ export default function App() {
 
         {/* BOTTOM */}
         <div style={styles.rowBottom}>
-        
+          <Seat
+            pos="bottom"
+            player={pBottom}
+            isMe={true}
+            isTurn={isMyTurn}
+            target={target}
+            setTarget={setTarget}
+            sfxClick={sfx.click}
+            compact={false}   // <-- IMPORTANT so openedSets show
+          />
         </div>
       </div>
           <div style={styles.handDock}>
@@ -762,7 +776,7 @@ export default function App() {
                           : isRunSelected
                           ? "2px solid rgba(255,255,255,0.78)"
                           : "1px solid rgba(0,0,0,0.22)",
-                        zIndex: isDiscard ? 50 : isRunSelected ? 40 : idx
+                        zIndex: idx
                       }}                      
                       onClick={() => toggleCard(c.id)}
                     >
@@ -1384,6 +1398,42 @@ turnPillTop: {
   background: "rgba(0,0,0,0.38)",
   border: "1px solid rgba(255,255,255,0.14)",
   whiteSpace: "nowrap"
+},
+
+seatSetsRowCompact: {
+  marginTop: 6,
+  display: "flex",
+  gap: 6,
+  overflowX: "auto",
+  WebkitOverflowScrolling: "touch",
+  paddingBottom: 4
+},
+
+fanSetCompact: {
+  flex: "0 0 auto",
+  borderRadius: 12,
+  padding: "6px 8px",
+  border: "1px solid rgba(255,255,255,0.10)"
+},
+
+fanSetRowCompact: {
+  display: "flex",
+  gap: 5,
+  flexWrap: "nowrap",
+  alignItems: "center"
+},
+
+fanCardCompact: {
+  width: 26,
+  height: 36,
+  borderRadius: 10,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "1px solid rgba(0,0,0,0.18)",
+  fontWeight: 950,
+  fontSize: 10,
+  boxShadow: "0 8px 18px rgba(0,0,0,0.16)"
 },
 
 };
