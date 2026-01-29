@@ -835,15 +835,20 @@ const isDiscard = discardPick === c.id;
 const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
 const rot = (t - 0.5) * 2 * fanMax;
 
-// spacing across the fan
+// spacing across the fan (center position of this card)
 const hitX = (t - 0.5) * xSpread;
+
+const step = fanCount <= 1 ? handCardSize.width : xSpread / (fanCount - 1);
+// clickable lane width: slightly smaller than the step so lanes don't overlap
+const laneW = Math.max(16, Math.min(handCardSize.width, step * 0.92));
 
 // visual lift only
 const drop = Math.abs(rot) * dropFactor;
 const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
 
-// ✅ narrow “tap lane” so you don’t hit neighbors
-const hitW = Math.max(20, Math.min(handCardSize.width, xSpread * 0.55));
+// ✅ compute per-card step so tap lanes NEVER overlap
+const step = fanCount <= 1 ? handCardSize.width : xSpread / (fanCount - 1);
+const hitW = Math.max(18, Math.min(handCardSize.width, step * 0.92));
 const hitH = handCardSize.height + 90;
 
 return (
@@ -859,11 +864,11 @@ return (
       left: "50%",
       bottom: 0,
       transform: `translateX(calc(-50% + ${hitX}px))`,
-      width: hitW,              // ✅ this is the important change
-      height: hitH,             // ✅ easier bottom taps
+      width: hitW,
+      height: hitH,
       zIndex: 1000 + idx,       // keep your stable order
       pointerEvents: "auto",
-      touchAction: "none"       // ✅ prevents “ghost taps” / scroll conflicts
+      touchAction: "none"
     }}
   >
     <motion.div
@@ -885,8 +890,8 @@ return (
           : isRunSelected
           ? "2px solid rgba(255,255,255,0.78)"
           : "1px solid rgba(0,0,0,0.22)",
-        pointerEvents: "none"    // ✅ critical: wrapper owns the tap        }}
-      }}
+        pointerEvents: "none" // ✅ wrapper owns the tap
+      }}      
       >
         {/* top-left pip */}
         <div
