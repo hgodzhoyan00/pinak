@@ -461,13 +461,15 @@ export default function App() {
   }, [me, canAct, isMyTurn, selected, discardPick]);
 
   /* ---------- AUTO END ROUND (no button) ---------- */
-  useEffect(() => {
+useEffect(() => {
   if (!game || !me) return;
-  if (!isMyTurn) return;
   if (game.roundOver || game.gameOver) return;
 
-  const handEmpty = (me?.hand?.length ?? 0) === 0;
-  const canEndTurn = canAct && isMyTurn && (!me.mustDiscard || handEmpty);
+  const isTurnNow = game.players?.[game.turn]?.id === me.id;
+  if (!isTurnNow) return;
+
+  const handEmpty = (me.hand?.length || 0) === 0;
+  if (!handEmpty) return;
 
   if (wentOutSentRef.current) return;
   wentOutSentRef.current = true;
@@ -475,7 +477,8 @@ export default function App() {
   ensureAudio();
   sfx.run();
   socket.emit("playerWentOut", { room: game.room });
-}, [game, me?.hand?.length, isMyTurn]); // 👈 important deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [game, me]);
 
   /* ---------- HELPERS ---------- */
   function toggleCard(id) {
@@ -887,6 +890,10 @@ return (
     // visual arc only (does NOT affect tap lanes)
     const drop = Math.abs(rot) * dropFactor;
     const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
+    
+    // widen tap lanes near the edges (fixes edge cards)
+    const edgeBoost = Math.abs(t - 0.5) * 2; // 0 center → 1 edges
+    const widenedW = hitWLocal + edgeBoost * 12;
 
     return (
       <div
