@@ -829,69 +829,68 @@ return (
       <motion.div variants={handVariants} initial="hidden" animate="show" style={{ ...styles.handFanDock, position: "relative" }}>
         <AnimatePresence initial={false}>
 {sortedHand.map((c, idx) => {
-const isRunSelected = selected.includes(c.id);
-const isDiscard = discardPick === c.id;
+  const isRunSelected = selected.includes(c.id);
+  const isDiscard = discardPick === c.id;
 
-const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
-const rot = (t - 0.5) * 2 * fanMax;
+  const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
+  const rot = (t - 0.5) * 2 * fanMax;
 
-// spacing across the fan (center position of this card)
-const hitX = (t - 0.5) * xSpread;
+  // spacing across the fan (center position of this card)
+  const hitX = (t - 0.5) * xSpread;
 
-// clickable lane width: slightly smaller than the step so lanes don't overlap
-const laneW = Math.max(16, Math.min(handCardSize.width, step * 0.92));
+  // ✅ compute per-card step FIRST (so tap lanes never overlap)
+  const step = fanCount <= 1 ? handCardSize.width : xSpread / (fanCount - 1);
+  const hitW = Math.max(18, Math.min(handCardSize.width, step * 0.92));
+  const hitH = handCardSize.height + 90;
 
-// visual lift only
-const drop = Math.abs(rot) * dropFactor;
-const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
+  // visual lift only
+  const drop = Math.abs(rot) * dropFactor;
+  const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
 
-// ✅ compute per-card step so tap lanes NEVER overlap
-const step = fanCount <= 1 ? handCardSize.width : xSpread / (fanCount - 1);
-const hitW = Math.max(18, Math.min(handCardSize.width, step * 0.92));
-const hitH = handCardSize.height + 90;
+  // ✅ optional but nice: bring selected/discard on top without changing spacing
+  const z = isDiscard ? 5000 : isRunSelected ? 4000 : 1000 + idx;
 
-return (
-  <div
-    key={c.id}
-    onPointerDown={(e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleCard(c.id);
-    }}
-    style={{
-      position: "absolute",
-      left: "50%",
-      bottom: 0,
-      transform: `translateX(calc(-50% + ${hitX}px))`,
-      width: hitW,
-      height: hitH,
-      zIndex: 1000 + idx,       // keep your stable order
-      pointerEvents: "auto",
-      touchAction: "none"
-    }}
-  >
-    <motion.div
-      variants={cardVariants}
+  return (
+    <div
+      key={c.id}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleCard(c.id);
+      }}
       style={{
-        ...styles.card,
-        ...handCardSize,
         position: "absolute",
         left: "50%",
         bottom: 0,
-        transform: "translateX(-50%)",
-        padding: 6,
-        rotate: rot,
-        y: visualY,
-        transformOrigin: "50% 95%",
-        background: cardFaceBg(c),
-        border: isDiscard
-          ? "2px solid #ff4d4d"
-          : isRunSelected
-          ? "2px solid rgba(255,255,255,0.78)"
-          : "1px solid rgba(0,0,0,0.22)",
-        pointerEvents: "none" // ✅ wrapper owns the tap
-      }}      
-      >
+        transform: `translateX(calc(-50% + ${hitX}px))`,
+        width: hitW,
+        height: hitH,
+        zIndex: z,
+        pointerEvents: "auto",
+        touchAction: "none"
+      }}
+    >
+      <motion.div
+        variants={cardVariants}
+        style={{
+          ...styles.card,
+          ...handCardSize,
+          position: "absolute",
+          left: "50%",
+          bottom: 0,
+          transform: "translateX(-50%)",
+          padding: 6,
+          rotate: rot,
+          y: visualY,
+          transformOrigin: "50% 95%",
+          background: cardFaceBg(c),
+          border: isDiscard
+            ? "2px solid #ff4d4d"
+            : isRunSelected
+            ? "2px solid rgba(255,255,255,0.78)"
+            : "1px solid rgba(0,0,0,0.22)",
+          pointerEvents: "none"
+        }}      >
         {/* top-left pip */}
         <div
           style={{
