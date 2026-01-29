@@ -851,12 +851,12 @@ return (
   const rot = (t - 0.5) * 2 * fanMax;
 
   const drop = Math.abs(rot) * dropFactor;
-  const visualY = yLift - drop + 10 + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
+  const visualY =
+    yLift - drop + 12 + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
 
-  // THIS is the spacing that prevents cards from blocking each other
   const hitX = (t - 0.5) * xSpread;
 
-  const z = 1000 + idx; // stable hitbox stacking so taps never get blocked
+  const z = isDiscard ? 5000 : isRunSelected ? 4000 : 1000 + idx;
 
   return (
     <div
@@ -865,13 +865,14 @@ return (
       style={{
         position: "absolute",
         left: "50%",
-        bottom: 0,
+        bottom: -10, // ✅ extends BELOW the fan
         transform: `translateX(calc(-50% + ${hitX}px))`,
-        width: handCardSize.width +30,
-        height: handCardSize.height + 90, // BIGGER hitbox so you can tap edges
+        width: handCardSize.width + 44,      // ✅ wider tap zone
+        height: handCardSize.height + 130,   // ✅ much taller tap zone
         zIndex: z,
         pointerEvents: "auto",
-        touchAction: "manipulation"
+        touchAction: "manipulation",
+        background: "transparent"
       }}
     >
       <motion.div
@@ -880,8 +881,9 @@ return (
           ...styles.card,
           ...handCardSize,
           position: "absolute",
-          left: 0,
+          left: "50%",
           bottom: 0,
+          transform: "translateX(-50%)",
           padding: 6,
           rotate: rot,
           y: visualY,
@@ -891,8 +893,7 @@ return (
             ? "2px solid #ff4d4d"
             : isRunSelected
             ? "2px solid rgba(255,255,255,0.78)"
-            : "1px solid rgba(0,0,0,0.22)",
-            pointerEvents: "none"
+            : "1px solid rgba(0,0,0,0.22)"
         }}
       >
         {/* top-left pip */}
@@ -951,7 +952,7 @@ return (
       </motion.div>
     </div>
   );
-})}        </AnimatePresence>
+})}       </AnimatePresence>
       </motion.div>
     </div>
 
@@ -1459,15 +1460,14 @@ const styles = {
 },
 
   handFanDock: {
-    position: "relative",
+    position: "absolute",
     left: "50%",
-    bottom: 4,
+    bottom: 55,
     transform: "translateX(-50%)",
     width: "min(1100px, 98vw)",
-    height: 160,
+    height: 220,
     overflow: "visible",
-    pointerEvents: "auto",
-    zIndex: 30    
+    pointerEvents: "auto"   
 },
 
   centerDrawRowCompact: {
