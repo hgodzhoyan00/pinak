@@ -527,7 +527,7 @@ export default function App() {
   const fanMax = Math.min(68, 34 + fanCount * 1.05);
 
   const yLift = 28;
-  const dropFactor = 0.32;
+  const dropFactor = 0.36;
   
   const handCardSize = { width: 46, height: 64, fontSize: 14, borderRadius: 12 };
   const miniCardSizeStyle = { width: 36, height: 50, borderRadius: 12 };
@@ -1310,7 +1310,7 @@ const styles = {
   handDockMeta: {
     position: "absolute",
     right: 10,
-    bottom: 74,              // pushes it down near the buttons
+    bottom: 44,              // pushes it down near the buttons
     display: "flex",
     justifyContent: "flex-end",
     gap: 12,
@@ -1322,7 +1322,7 @@ const styles = {
   handFanDock: {
     position: "absolute",
     left: "50%",
-    bottom: 10,
+    bottom: 8,
     transform: "translateX(-50%)",
     width: "min(1100px, 98vw)",
     height: 160,
