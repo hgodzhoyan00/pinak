@@ -523,8 +523,8 @@ export default function App() {
 
   const fanCount = sortedHand.length || 1;
 
-  const xSpread = Math.min(110, 34 + fanCount * 3.2);
-  const fanMax = Math.min(55, 26 + fanCount * 0.9);
+  const xSpread = Math.min(140, 42 + fanCount * 3.6);
+  const fanMax = Math.min(62, 30 + fanCount * 1.0);
 
   const yLift = 28;
   const dropFactor = 0.28;
@@ -612,10 +612,7 @@ export default function App() {
 
           <div style={styles.midCenter}>
             <div style={styles.center}>
-              {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
-                <div style={styles.turnPill}>🔥 YOUR TURN</div>
-              )}
-
+              
               <div style={styles.centerCard}>
                 <div style={styles.centerHeader}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1325,7 +1322,7 @@ const styles = {
   handFanDock: {
     position: "absolute",
     left: "50%",
-    bottom: 55,
+    bottom: 24,
     transform: "translateX(-50%)",
     width: "min(1100px, 98vw)",
     height: 160,
