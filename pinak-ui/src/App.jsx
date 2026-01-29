@@ -675,7 +675,7 @@ export default function App() {
                           setTarget={setTarget}
                           sfxClick={sfx.click}
                           compact={false}
-                          hideHeader={true}
+                          hideHeader
                         />
                       </div>
                       <MiniCard card={c} selected={i < openCount} sizeStyle={miniCardSizeStyle} />
