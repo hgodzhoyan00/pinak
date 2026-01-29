@@ -798,7 +798,7 @@ return (
       </div>
 
       {/* bottom row exists but you can leave it empty */}
-      <div style={styles.rowBottom} />
+      
     </div>
     {/* RUNS RAIL (shows all players' opened sets) */}
 <div style={styles.runsRail}>
@@ -1458,8 +1458,8 @@ const styles = {
     position: "fixed",
     left: 0,
     right: 0,
-    bottom: 78, // sits just above action bar
-    height: 240,
+    bottom: 20, // sits just above action bar
+    height: 220,
     pointerEvents: "none",
     zIndex: 600
 },
@@ -1482,7 +1482,7 @@ const styles = {
     height: 240,                    // ✅ room for big hitboxes
     margin: "0 auto",
     overflow: "visible",
-    pointerEvents: "auto"  
+    pointerEvents: "none"  
 },
 
   centerDrawRowCompact: {
