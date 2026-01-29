@@ -665,6 +665,19 @@ export default function App() {
                         touchAction: "manipulation"
                       }}
                     >
+                      <div style={styles.rowBottom}>
+                        <Seat
+                          pos="bottom"
+                          player={pBottom}
+                          isMe
+                          isTurn={isMyTurn}
+                          target={target}
+                          setTarget={setTarget}
+                          sfxClick={sfx.click}
+                          compact={false}
+                          hideHeader={true}
+                        />
+                      </div>
                       <MiniCard card={c} selected={i < openCount} sizeStyle={miniCardSizeStyle} />
                     </div>
                   ))}
@@ -1047,6 +1060,8 @@ const styles = {
     boxShadow: "0 14px 40px rgba(0,0,0,0.22)",
     backdropFilter: "blur(10px)",
     marginTop: -36,
+    position: "relative",
+    zIndex: 5
   },
 
   centerHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 6 },
@@ -1119,7 +1134,12 @@ const styles = {
   midSide: { minWidth: 0 },
   midCenter: { minWidth: 0 },
 
-  rowBottom: { minHeight: 0, minWidth: 0 },
+  rowBottom: { 
+    minHeight: 92, 
+    paddingBottom: 6,
+    display: "flex",  
+    alignItems: "flex-end" 
+  },
 
   seatHeader: {
     display: "flex",
