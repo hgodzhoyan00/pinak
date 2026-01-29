@@ -676,19 +676,7 @@ export default function App() {
                         touchAction: "manipulation"
                       }}
                     >
-                      <div style={styles.rowBottom}>
-                        <Seat
-                          pos="bottom"
-                          player={pBottom}
-                          isMe={true}
-                          isTurn={isMyTurn}
-                          target={target}
-                          setTarget={setTarget}
-                          sfxClick={sfx.click}
-                          compact={false}
-                          hideHeader={true}
-                        />
-                      </div>
+                      
                       <MiniCard card={c} selected={i < openCount} sizeStyle={miniCardSizeStyle} />
                     </div>
                   ))}
