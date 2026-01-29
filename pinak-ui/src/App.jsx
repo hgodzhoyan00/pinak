@@ -521,11 +521,13 @@ export default function App() {
     show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 420, damping: 28 } }
   };
 
-  const fanMax = 28;
-  const xSpread = 34;
-  const yLift = 34;
-  const dropFactor = 0.45;
   const fanCount = sortedHand.length || 1;
+  const xSpread = Math.min(78, 34 + fanCount * 2.2);
+  const fanMax = Math.min(42, 26 + fanCount * 0.7);
+  const yLift = 28;
+  const dropFactor = 0.28;
+  const y = yLift - drop - fanCount * 0.4;
+  
 
   const handCardSize = { width: 46, height: 64, fontSize: 14, borderRadius: 12 };
   const miniCardSizeStyle = { width: 36, height: 50, borderRadius: 12 };
@@ -1314,7 +1316,7 @@ const styles = {
     position: "fixed",
     left: 0,
     right: 0,
-    bottom: 70, // sits just above action bar
+    bottom: 24, // sits just above action bar
     height: 190,
     pointerEvents: "none",
     zIndex: 200
