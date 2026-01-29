@@ -466,8 +466,8 @@ export default function App() {
   if (!isMyTurn) return;
   if (game.roundOver || game.gameOver) return;
 
-  const handEmpty = (me.hand?.length || 0) === 0;
-  if (!handEmpty) return;
+  const handEmpty = (me?.hand?.length ?? 0) === 0;
+  const canEndTurn = canAct && isMyTurn && (!me.mustDiscard || handEmpty);
 
   if (wentOutSentRef.current) return;
   wentOutSentRef.current = true;
@@ -865,126 +865,129 @@ return (
 
       <motion.div variants={handVariants} initial="hidden" animate="show" style={{ ...styles.handFanDock, position: "relative" }}>
         <AnimatePresence initial={false}>
-{sortedHand.map((c, idx) => {
-  const isRunSelected = selected.includes(c.id);
-  const isDiscard = discardPick === c.id;
 
-  const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
-  const rot = (t - 0.5) * 2 * fanMax;
+{(() => {
+  const fanCountLocal = sortedHand.length || 1;
 
-  // spacing across the fan (center position of this card)
-  const hitX = (t - 0.5) * xSpread;
+  // per-card spacing so tap lanes never overlap (scoped here = no redeclare errors)
+  const stepLocal = fanCountLocal <= 1 ? handCardSize.width : xSpread / (fanCountLocal - 1);
+  const hitWLocal = Math.max(18, Math.min(handCardSize.width, stepLocal * 0.92));
+  const hitHLocal = handCardSize.height + 90;
 
-  // ✅ compute per-card step FIRST (so tap lanes never overlap)
-  const step = fanCount <= 1 ? handCardSize.width : xSpread / (fanCount - 1);
-  const hitW = Math.max(26, Math.min(handCardSize.width, step * 0.98));
-  const hitH = handCardSize.height + 95;
+  return sortedHand.map((c, idx) => {
+    const isRunSelected = selected.includes(c.id);
+    const isDiscard = discardPick === c.id;
 
-  // visual lift only
-  const drop = Math.abs(rot) * dropFactor;
-  const visualY = yLift - drop + (isRunSelected ? -6 : 0) + (isDiscard ? -10 : 0);
+    const t = fanCountLocal <= 1 ? 0.5 : idx / (fanCountLocal - 1);
+    const rot = (t - 0.5) * 2 * fanMax;
 
-  // ✅ optional but nice: bring selected/discard on top without changing spacing
-  const z = 1000 + idx; // ✅ stable order, no “pop over neighbors”
+    // wrapper (tap lane) center position
+    const hitX = (t - 0.5) * xSpread;
 
-  return (
-    <div
-      key={c.id}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleCard(c.id);
-      }}
-      style={{
-        position: "absolute",
-        left: "50%",
-        bottom: 0,
-        transform: `translateX(-50%) translateX(${hitX}px)`,
-        width: hitW,
-        height: hitH,
-        zIndex: z,
-        pointerEvents: "auto",
-        touchAction: "none"
-      }}
-    >
-      <motion.div
-        variants={cardVariants}
+    // visual arc only (does NOT affect tap lanes)
+    const drop = Math.abs(rot) * dropFactor;
+    const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
+
+    return (
+      <div
+        key={c.id}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleCard(c.id);
+        }}
         style={{
-          ...styles.card,
-          ...handCardSize,
           position: "absolute",
           left: "50%",
           bottom: 0,
-          transform: "translateX(-50%)",
-          padding: 6,
-          rotate: rot,
-          y: visualY,
-          transformOrigin: "50% 95%",
-          background: cardFaceBg(c),
-          border: isDiscard
-            ? "2px solid #ff4d4d"
-            : isRunSelected
-            ? "2px solid rgba(255,255,255,0.78)"
-            : "1px solid rgba(0,0,0,0.22)",
-          pointerEvents: "none"
-        }}      >
-        {/* top-left pip */}
-        <div
+          transform: `translateX(calc(-50% + ${hitX}px))`,
+          width: hitWLocal,               // ✅ non-overlapping tap lane
+          height: hitHLocal,              // ✅ easier bottom taps
+          zIndex: 1000 + idx,             // ✅ KEEP STABLE (prevents overlap/steal)
+          pointerEvents: "auto",
+          touchAction: "none"
+        }}
+      >
+        <motion.div
+          variants={cardVariants}
           style={{
+            ...styles.card,
+            ...handCardSize,
             position: "absolute",
-            top: 6,
-            left: 6,
-            display: "flex",
-            flexDirection: "column",
-            lineHeight: 1,
-            fontWeight: 950,
-            fontSize: 12,
-            color: suitColor(c.suit)
+            left: "50%",
+            bottom: 0,
+            transform: "translateX(-50%)",
+            padding: 6,
+            rotate: rot,
+            y: visualY,
+            transformOrigin: "50% 95%",
+            background: cardFaceBg(c),
+            border: isDiscard
+              ? "2px solid #ff4d4d"
+              : isRunSelected
+              ? "2px solid rgba(255,255,255,0.78)"
+              : "1px solid rgba(0,0,0,0.22)",
+            pointerEvents: "none"          // ✅ wrapper owns the tap
           }}
         >
-          <span>{c.value}</span>
-          <span style={{ marginTop: 2 }}>{c.suit}</span>
-        </div>
+          {/* top-left pip */}
+          <div
+            style={{
+              position: "absolute",
+              top: 6,
+              left: 6,
+              display: "flex",
+              flexDirection: "column",
+              lineHeight: 1,
+              fontWeight: 950,
+              fontSize: 12,
+              color: suitColor(c.suit)
+            }}
+          >
+            <span>{c.value}</span>
+            <span style={{ marginTop: 2 }}>{c.suit}</span>
+          </div>
 
-        {/* center suit watermark */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "grid",
-            placeItems: "center",
-            fontSize: 18,
-            fontWeight: 900,
-            opacity: 0.18,
-            color: suitColor(c.suit),
-            pointerEvents: "none"
-          }}
-        >
-          {c.suit}
-        </div>
+          {/* center suit watermark */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "grid",
+              placeItems: "center",
+              fontSize: 18,
+              fontWeight: 900,
+              opacity: 0.18,
+              color: suitColor(c.suit),
+              pointerEvents: "none"
+            }}
+          >
+            {c.suit}
+          </div>
 
-        {/* bottom-right pip */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 6,
-            right: 6,
-            display: "flex",
-            flexDirection: "column",
-            lineHeight: 1,
-            fontWeight: 950,
-            fontSize: 12,
-            color: suitColor(c.suit),
-            transform: "rotate(180deg)"
-          }}
-        >
-          <span>{c.value}</span>
-          <span style={{ marginTop: 2 }}>{c.suit}</span>
-        </div>
-      </motion.div>
-    </div>
-  );
-})}       </AnimatePresence>
+          {/* bottom-right pip */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 6,
+              right: 6,
+              display: "flex",
+              flexDirection: "column",
+              lineHeight: 1,
+              fontWeight: 950,
+              fontSize: 12,
+              color: suitColor(c.suit),
+              transform: "rotate(180deg)"
+            }}
+          >
+            <span>{c.value}</span>
+            <span style={{ marginTop: 2 }}>{c.suit}</span>
+          </div>
+        </motion.div>
+      </div>
+    );
+  });
+})()}      </AnimatePresence>
       </motion.div>
     </div>
 
@@ -999,11 +1002,20 @@ return (
             onClick={() => {
               ensureAudio();
               sfx.run();
+
+              const handLen = me?.hand?.length ?? 0;
+              const willEmpty = selected.length >= 1 && selected.length === handLen;
+
               safeEmit("openRun", { room: game.room, cardIds: selected });
+
+              // if that move used your last card(s), you are OUT
+              if (willEmpty) {
+                socket.emit("playerWentOut", { room: game.room });
+              }
+
               setSelected([]);
               setDiscardPick(null);
-            }}
-          >
+            }}          >
             Create Run
           </button>
 
@@ -1013,16 +1025,24 @@ return (
             onClick={() => {
               ensureAudio();
               sfx.run();
+
+              const handLen = me?.hand?.length ?? 0;
+              const willEmpty = selected.length >= 1 && selected.length === handLen;
+
               safeEmit("addToRun", {
                 room: game.room,
                 targetPlayer: target.playerId,
                 runIndex: target.runIndex,
                 cardIds: selected
               });
+
+              if (willEmpty) {
+                socket.emit("playerWentOut", { room: game.room });
+              }
+
               setSelected([]);
               setDiscardPick(null);
-            }}
-          >
+            }}          >
             Add
           </button>
 
