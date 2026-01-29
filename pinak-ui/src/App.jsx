@@ -736,14 +736,12 @@ export default function App() {
                 {sortedHand.map((c, idx) => {
                   const isRunSelected = selected.includes(c.id);
                   const isDiscard = discardPick === c.id;
-
-                  const t = fanCount <= 1 ? 0 : idx / (fanCount - 1);
+                  const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
                   const rot = (t - 0.5) * 2 * fanMax;
 
                   const drop = Math.abs(rot) * dropFactor;
                   const y = yLift - drop;
                   const x = (t - 0.5) * xSpread;
-
                   return (
                     <motion.div
                       key={c.id}
