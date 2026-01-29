@@ -137,6 +137,7 @@ function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick, compact,
       : null;
 return (
   <div style={{ ...styles.seat, ...(styles[`seat_${pos}`] || {}) }}>
+
       {!hideHeader && (
       <div style={headerStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
@@ -679,7 +680,7 @@ export default function App() {
                         <Seat
                           pos="bottom"
                           player={pBottom}
-                          isMe
+                          isMe={true}
                           isTurn={isMyTurn}
                           target={target}
                           setTarget={setTarget}
