@@ -57,8 +57,15 @@ function MiniCard({ card, selected, sizeStyle }) {
 
 /* ---------- OPENED SETS (compact fan strip) ---------- */
 function FanSet({ set, isTarget, compact }) {
-  const head = set.slice(0, compact ? 5 : 7);
-  const extra = set.length - head.length;
+  const maxShown = compact ? 6 : 10;
+  const cards = set.slice(0, maxShown);
+  const extra = set.length - cards.length;
+
+  const spread = compact ? 10 : 14;     // horizontal spacing between cards
+  const tilt = compact ? 10 : 14;       // max rotation degrees
+  const lift = compact ? 10 : 14;       // arc height
+
+  const count = cards.length || 1;
 
   return (
     <div
@@ -68,25 +75,40 @@ function FanSet({ set, isTarget, compact }) {
         background: isTarget ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.16)"
       }}
     >
-      <div style={compact ? styles.fanSetRowCompact : styles.fanSetRow}>
-        {head.map((c, idx) => (
-          <span
-            key={c.id || idx}
-            style={{
-              ...(compact ? styles.fanCardCompact : styles.fanCard),
-              background: cardFaceBg(c),
-              color: suitColor(c.suit)
-            }}
-          >
-            {c.value}
-            {c.suit}
-          </span>
-        ))}
+      <div style={{ ...(compact ? styles.fanStackCompact : styles.fanStack) }}>
+        {cards.map((c, i) => {
+          const t = count <= 1 ? 0.5 : i / (count - 1);
+          const rot = (t - 0.5) * 2 * tilt;
+          const x = (t - 0.5) * spread * (count - 1);
+          const y = lift - Math.abs(rot) * (compact ? 0.55 : 0.6);
+
+          return (
+            <span
+              key={c.id || i}
+              style={{
+                ...(compact ? styles.fanCardCompact : styles.fanCard),
+                position: "absolute",
+                left: "50%",
+                bottom: 0,
+                transform: `translateX(-50%) translateX(${x}px) translateY(${y}px) rotate(${rot}deg)`,
+                transformOrigin: "50% 95%",
+                background: cardFaceBg(c),
+                color: suitColor(c.suit)
+              }}
+            >
+              {c.value}
+              {c.suit}
+            </span>
+          );
+        })}
 
         {extra > 0 && (
           <span
             style={{
               ...(compact ? styles.fanCardCompact : styles.fanCard),
+              position: "absolute",
+              right: 0,
+              bottom: 0,
               background: "rgba(0,0,0,0.25)",
               color: "#fff"
             }}
@@ -97,15 +119,15 @@ function FanSet({ set, isTarget, compact }) {
       </div>
     </div>
   );
-}
-/* ---------- SEAT ---------- */
-function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick, compact }) {
+}/* ---------- SEAT ---------- */
+function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick, compact, hideHeader }) {
   if (!player) return null;
 
   const headerStyle = { ...styles.seatHeader, ...(isTurn ? styles.seatHeaderTurn : null) };
 
-  return (
-    <div style={{ ...styles.seat, ...styles[`seat_${pos}`] }}>
+return (
+  <div style={{ ...styles.seat, ...styles[`seat_${pos}`] }}>
+    {!hideHeader && (
       <div style={headerStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
           <div
@@ -129,32 +151,34 @@ function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick, compact 
           <Badge>{player.hand?.length ?? 0}🂠</Badge>
         </div>
       </div>
+    )}
 
-      {!compact && (
-<div style={compact ? styles.seatSetsRowCompact : styles.seatSetsRow}>
-  {player.openedSets?.length ? (
-    player.openedSets.map((set, i) => {
-      const isTarget = target?.playerId === player.id && target?.runIndex === i;
-      return (
-        <div
-          key={i}
-          onClick={() => {
-            sfxClick?.();
-            setTarget?.({ playerId: player.id, runIndex: i });
-          }}
-          style={{ flex: "0 0 auto", cursor: "pointer", touchAction: "manipulation" }}
-          title="Tap to target this run"
-        >
-          <FanSet set={set} isTarget={isTarget} compact={compact} />
-        </div>
-      );
-    })
-  ) : (
-    <div style={styles.emptySets}>—</div>
-  )}
-</div>      )}
-    </div>
-  );
+    {!compact && (
+      <div style={styles.seatSetsRow}>
+        {player.openedSets?.length ? (
+          player.openedSets.map((set, i) => {
+            const isTarget = target?.playerId === player.id && target?.runIndex === i;
+            return (
+              <div
+                key={i}
+                onClick={() => {
+                  sfxClick?.();
+                  setTarget?.({ playerId: player.id, runIndex: i });
+                }}
+                style={{ flex: "0 0 auto", cursor: "pointer", touchAction: "manipulation" }}
+                title="Tap to target this run"
+              >
+                <FanSet set={set} isTarget={isTarget} />
+              </div>
+            );
+          })
+        ) : (
+          <div style={styles.emptySets}>—</div>
+        )}
+      </div>
+    )}
+  </div>
+ );
 }
 
 function RotateOverlay() {
@@ -732,7 +756,8 @@ export default function App() {
             target={target}
             setTarget={setTarget}
             sfxClick={sfx.click}
-            compact={false}   // <-- IMPORTANT so openedSets show
+            compact={false}
+            hideHeader={true}   
           />
         </div>
       </div>
