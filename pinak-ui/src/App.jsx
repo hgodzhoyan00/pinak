@@ -843,110 +843,114 @@ return (
 
       <motion.div variants={handVariants} initial="hidden" animate="show" style={{ ...styles.handFanDock, position: "relative" }}>
         <AnimatePresence initial={false}>
-          {sortedHand.map((c, idx) => {
-            const isRunSelected = selected.includes(c.id);
-            const isDiscard = discardPick === c.id;
+{sortedHand.map((c, idx) => {
+  const isRunSelected = selected.includes(c.id);
+  const isDiscard = discardPick === c.id;
 
-            const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
-            const rot = (t - 0.5) * 2 * fanMax;
+  const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
+  const rot = (t - 0.5) * 2 * fanMax;
 
-            const drop = Math.abs(rot) * dropFactor;
-            const y = yLift - drop;
-            const x = (t - 0.5) * xSpread;
+  const drop = Math.abs(rot) * dropFactor;
+  const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
 
-            return (
-              <motion.div
-  key={c.id}
-  variants={cardVariants}
-  style={{
-    ...styles.card,
-    ...handCardSize,
+  // THIS is the spacing that prevents cards from blocking each other
+  const hitX = (t - 0.5) * xSpread;
 
-    // IMPORTANT: this makes the pip divs position inside the card
-    position: "absolute",
-    left: "50%",
-    bottom: 0,
-    transform: "translateX(-50%)",
+  const z = isDiscard ? 5000 : isRunSelected ? 4000 : 1000 + idx;
 
-    // IMPORTANT: allow absolute children to anchor correctly
-    boxSizing: "border-box",
-    overflow: "hidden",
+  return (
+    <div
+      key={c.id}
+      onClick={() => toggleCard(c.id)}
+      style={{
+        position: "absolute",
+        left: "50%",
+        bottom: 0,
+        transform: `translateX(calc(-50% + ${hitX}px))`,
+        width: handCardSize.width,
+        height: handCardSize.height + 70, // BIGGER hitbox so you can tap edges
+        zIndex: z,
+        pointerEvents: "auto",
+        touchAction: "manipulation"
+      }}
+    >
+      <motion.div
+        variants={cardVariants}
+        style={{
+          ...styles.card,
+          ...handCardSize,
+          position: "absolute",
+          left: 0,
+          bottom: 0,
+          padding: 6,
+          rotate: rot,
+          y: visualY,
+          transformOrigin: "50% 95%",
+          background: cardFaceBg(c),
+          border: isDiscard
+            ? "2px solid #ff4d4d"
+            : isRunSelected
+            ? "2px solid rgba(255,255,255,0.78)"
+            : "1px solid rgba(0,0,0,0.22)"
+        }}
+      >
+        {/* top-left pip */}
+        <div
+          style={{
+            position: "absolute",
+            top: 6,
+            left: 6,
+            display: "flex",
+            flexDirection: "column",
+            lineHeight: 1,
+            fontWeight: 950,
+            fontSize: 12,
+            color: suitColor(c.suit)
+          }}
+        >
+          <span>{c.value}</span>
+          <span style={{ marginTop: 2 }}>{c.suit}</span>
+        </div>
 
-    rotate: rot,
-    x,
-    y,
-    transformOrigin: "50% 95%",
+        {/* center suit watermark */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "grid",
+            placeItems: "center",
+            fontSize: 18,
+            fontWeight: 900,
+            opacity: 0.18,
+            color: suitColor(c.suit),
+            pointerEvents: "none"
+          }}
+        >
+          {c.suit}
+        </div>
 
-    background: cardFaceBg(c),
-    border: isDiscard
-      ? "2px solid #ff4d4d"
-      : isRunSelected
-      ? "2px solid rgba(255,255,255,0.78)"
-      : "1px solid rgba(0,0,0,0.22)",
-    zIndex: isDiscard ? 50 : isRunSelected ? 40 : idx
-  }}
-  onClick={() => toggleCard(c.id)}
->
-  {/* top-left pip */}
-  <div
-    style={{
-      position: "absolute",
-      top: 6,
-      left: 6,
-      zIndex: 2,
-      display: "flex",
-      flexDirection: "column",
-      lineHeight: 1,
-      fontWeight: 950,
-      fontSize: 12,
-      color: suitColor(c.suit)
-    }}
-  >
-    <span>{c.value}</span>
-    <span style={{ marginTop: 2 }}>{c.suit}</span>
-  </div>
-
-  {/* center watermark */}
-  <div
-    style={{
-      position: "absolute",
-      inset: 0,
-      zIndex: 1,
-      display: "grid",
-      placeItems: "center",
-      fontSize: 18,
-      fontWeight: 900,
-      opacity: 0.18,
-      color: suitColor(c.suit),
-      pointerEvents: "none"
-    }}
-  >
-    {c.suit}
-  </div>
-
-  {/* bottom-right pip */}
-  <div
-    style={{
-      position: "absolute",
-      bottom: 6,
-      right: 6,
-      zIndex: 2,
-      display: "flex",
-      flexDirection: "column",
-      lineHeight: 1,
-      fontWeight: 950,
-      fontSize: 12,
-      color: suitColor(c.suit),
-      transform: "rotate(180deg)"
-    }}
-  >
-    <span>{c.value}</span>
-    <span style={{ marginTop: 2 }}>{c.suit}</span>
-  </div>
-</motion.div>
-            );
-          })}
-        </AnimatePresence>
+        {/* bottom-right pip */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 6,
+            right: 6,
+            display: "flex",
+            flexDirection: "column",
+            lineHeight: 1,
+            fontWeight: 950,
+            fontSize: 12,
+            color: suitColor(c.suit),
+            transform: "rotate(180deg)"
+          }}
+        >
+          <span>{c.value}</span>
+          <span style={{ marginTop: 2 }}>{c.suit}</span>
+        </div>
+      </motion.div>
+    </div>
+  );
+})}        </AnimatePresence>
       </motion.div>
     </div>
 
