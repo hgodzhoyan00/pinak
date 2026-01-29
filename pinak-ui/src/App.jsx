@@ -838,7 +838,6 @@ const rot = (t - 0.5) * 2 * fanMax;
 // spacing across the fan (center position of this card)
 const hitX = (t - 0.5) * xSpread;
 
-const step = fanCount <= 1 ? handCardSize.width : xSpread / (fanCount - 1);
 // clickable lane width: slightly smaller than the step so lanes don't overlap
 const laneW = Math.max(16, Math.min(handCardSize.width, step * 0.92));
 
