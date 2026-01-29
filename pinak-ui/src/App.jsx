@@ -823,32 +823,94 @@ return (
 
             return (
               <motion.div
-                key={c.id}
-                variants={cardVariants}
-                style={{
-                  ...styles.card,
-                  ...handCardSize,
-                  position: "absolute",
-                  padding: 6,
-                  left: "50%",
-                  bottom: 0,
-                  transform: "translateX(-50%)",
-                  rotate: rot,
-                  x,
-                  y,
-                  transformOrigin: "50% 95%",
-                  background: cardFaceBg(c),
-                  border: isDiscard
-                    ? "2px solid #ff4d4d"
-                    : isRunSelected
-                    ? "2px solid rgba(255,255,255,0.78)"
-                    : "1px solid rgba(0,0,0,0.22)",
-                  zIndex: idx
-                }}
-                onClick={() => toggleCard(c.id)}
-              >
-                {/* ... your pip markup unchanged ... */}
-              </motion.div>
+  key={c.id}
+  variants={cardVariants}
+  style={{
+    ...styles.card,
+    ...handCardSize,
+
+    // IMPORTANT: this makes the pip divs position inside the card
+    position: "absolute",
+    left: "50%",
+    bottom: 0,
+    transform: "translateX(-50%)",
+
+    // IMPORTANT: allow absolute children to anchor correctly
+    boxSizing: "border-box",
+    overflow: "hidden",
+
+    rotate: rot,
+    x,
+    y,
+    transformOrigin: "50% 95%",
+
+    background: cardFaceBg(c),
+    border: isDiscard
+      ? "2px solid #ff4d4d"
+      : isRunSelected
+      ? "2px solid rgba(255,255,255,0.78)"
+      : "1px solid rgba(0,0,0,0.22)",
+    zIndex: isDiscard ? 50 : isRunSelected ? 40 : idx
+  }}
+  onClick={() => toggleCard(c.id)}
+>
+  {/* top-left pip */}
+  <div
+    style={{
+      position: "absolute",
+      top: 6,
+      left: 6,
+      zIndex: 2,
+      display: "flex",
+      flexDirection: "column",
+      lineHeight: 1,
+      fontWeight: 950,
+      fontSize: 12,
+      color: suitColor(c.suit)
+    }}
+  >
+    <span>{c.value}</span>
+    <span style={{ marginTop: 2 }}>{c.suit}</span>
+  </div>
+
+  {/* center watermark */}
+  <div
+    style={{
+      position: "absolute",
+      inset: 0,
+      zIndex: 1,
+      display: "grid",
+      placeItems: "center",
+      fontSize: 18,
+      fontWeight: 900,
+      opacity: 0.18,
+      color: suitColor(c.suit),
+      pointerEvents: "none"
+    }}
+  >
+    {c.suit}
+  </div>
+
+  {/* bottom-right pip */}
+  <div
+    style={{
+      position: "absolute",
+      bottom: 6,
+      right: 6,
+      zIndex: 2,
+      display: "flex",
+      flexDirection: "column",
+      lineHeight: 1,
+      fontWeight: 950,
+      fontSize: 12,
+      color: suitColor(c.suit),
+      transform: "rotate(180deg)"
+    }}
+  >
+    <span>{c.value}</span>
+    <span style={{ marginTop: 2 }}>{c.suit}</span>
+  </div>
+</motion.div>
             );
           })}
         </AnimatePresence>
