@@ -1060,8 +1060,6 @@ const styles = {
     boxShadow: "0 14px 40px rgba(0,0,0,0.22)",
     backdropFilter: "blur(10px)",
     marginTop: -36,
-    position: "relative",
-    zIndex: 5
   },
 
   centerHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 6 },
