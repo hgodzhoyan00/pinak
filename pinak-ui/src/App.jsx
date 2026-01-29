@@ -578,11 +578,11 @@ export default function App() {
 
   const fanCount = sortedHand.length || 1;
 
-  const xSpread = Math.min(160, 48 + fanCount * 3.8);
-  const fanMax = Math.min(68, 34 + fanCount * 1.05);
+  const xSpread = Math.min(220, 70 + fanCount * 6.5);
+  const fanMax = Math.min(78, 34 + fanCount * 1.35);
 
   const yLift = 28;
-  const dropFactor = 0.36;
+  const dropFactor = 0.24;
   
   const handCardSize = { width: 46, height: 64, fontSize: 14, borderRadius: 12 };
   const miniCardSizeStyle = { width: 36, height: 50, borderRadius: 12 };
@@ -851,7 +851,7 @@ return (
   const rot = (t - 0.5) * 2 * fanMax;
 
   const drop = Math.abs(rot) * dropFactor;
-  const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
+  const visualY = yLift - drop + 10 + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
 
   // THIS is the spacing that prevents cards from blocking each other
   const hitX = (t - 0.5) * xSpread;
@@ -867,8 +867,8 @@ return (
         left: "50%",
         bottom: 0,
         transform: `translateX(calc(-50% + ${hitX}px))`,
-        width: handCardSize.width,
-        height: handCardSize.height + 70, // BIGGER hitbox so you can tap edges
+        width: handCardSize.width +30,
+        height: handCardSize.height + 90, // BIGGER hitbox so you can tap edges
         zIndex: z,
         pointerEvents: "auto",
         touchAction: "manipulation"
