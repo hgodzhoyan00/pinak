@@ -1310,7 +1310,7 @@ const styles = {
   handDockMeta: {
     position: "absolute",
     right: 10,
-    bottom: 44,              // pushes it down near the buttons
+    bottom: 40,              // pushes it down near the buttons
     display: "flex",
     justifyContent: "flex-end",
     gap: 12,
@@ -1322,7 +1322,7 @@ const styles = {
   handFanDock: {
     position: "absolute",
     left: "50%",
-    bottom: 8,
+    bottom: 4,
     transform: "translateX(-50%)",
     width: "min(1100px, 98vw)",
     height: 160,
