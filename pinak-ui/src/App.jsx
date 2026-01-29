@@ -845,10 +845,10 @@ return (
 
   // visual lift only
   const drop = Math.abs(rot) * dropFactor;
-  const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
+  const visualY = yLift - drop + (isRunSelected ? -6 : 0) + (isDiscard ? -10 : 0);
 
   // ✅ optional but nice: bring selected/discard on top without changing spacing
-  const z = isDiscard ? 5000 : isRunSelected ? 4000 : 1000 + idx;
+  const z = 1000 + idx; // ✅ stable order, no “pop over neighbors”
 
   return (
     <div
