@@ -826,36 +826,17 @@ return (
   const isRunSelected = selected.includes(c.id);
   const isDiscard = discardPick === c.id;
 
-  const count = fanCount;
-
-  // --- FAN GEOMETRY (stable up to 20 cards) ---
-  const cardW = handCardSize.width;     // 46
-  const minEdge = 16;                   // how much of each card edge stays clickable/visible
-  const maxHalfSpread = 520;            // cap spread so it doesn't go off screen
-
-  const step = count <= 1
-    ? 0
-    : Math.min(maxHalfSpread, (count - 1) * minEdge) / (count - 1);
-
-  // hitbox X spacing (THIS prevents blocking)
-  const hitX = (idx - (count - 1) / 2) * step;
-
-  // rotation based on position in fan
-  const t = count <= 1 ? 0.5 : idx / (count - 1);
-  const fanMax = Math.min(60, 28 + count * 1.2);
+  const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
   const rot = (t - 0.5) * 2 * fanMax;
 
-  // visual Y curve (visual only)
-  const yLift = 34;
-  const dropFactor = 0.22;
+  // spacing across the fan
+  const hitX = (t - 0.5) * xSpread;
+
+  // visual lift only (DO NOT change zIndex)
   const drop = Math.abs(rot) * dropFactor;
   const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
 
-  // z-index to keep selected/discard on top
-  const z = isDiscard ? 5000 : isRunSelected ? 4000 : 1000 + idx;
-
   return (
-    // OUTER WRAPPER = BIG HITBOX + HORIZONTAL SPACING ONLY
     <div
       key={c.id}
       onClick={() => toggleCard(c.id)}
@@ -864,14 +845,13 @@ return (
         left: "50%",
         bottom: 0,
         transform: `translateX(calc(-50% + ${hitX}px))`,
-        width: cardW,
-        height: handCardSize.height + 120, // BIG click area for bottom cards
-        zIndex: z,
+        width: handCardSize.width,
+        height: handCardSize.height + 70, // big vertical hit area
+        zIndex: 1000 + idx,               // ✅ stable order prevents blocking neighbors
         pointerEvents: "auto",
         touchAction: "manipulation"
       }}
     >
-      {/* INNER CARD = VISUAL ONLY (rotate + y) */}
       <motion.div
         variants={cardVariants}
         style={{
@@ -889,7 +869,8 @@ return (
             ? "2px solid #ff4d4d"
             : isRunSelected
             ? "2px solid rgba(255,255,255,0.78)"
-            : "1px solid rgba(0,0,0,0.22)"
+            : "1px solid rgba(0,0,0,0.22)",
+          pointerEvents: "none" // ✅ clicks handled by wrapper, not the moving card
         }}
       >
         {/* top-left pip */}
