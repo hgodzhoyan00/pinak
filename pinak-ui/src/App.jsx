@@ -1458,7 +1458,7 @@ const styles = {
 },
 
   handFanDock: {
-    position: "absolute",
+    position: "relative",
     left: "50%",
     bottom: 4,
     transform: "translateX(-50%)",
