@@ -800,6 +800,39 @@ return (
       {/* bottom row exists but you can leave it empty */}
       <div style={styles.rowBottom} />
     </div>
+    {/* RUNS RAIL (shows all players' opened sets) */}
+<div style={styles.runsRail}>
+  {game.players.map((p) => (
+    <div key={p.id} style={styles.runsRailBlock}>
+      <div style={styles.runsRailName}>
+        {p.name}
+        {p.id === me.id ? " (You)" : ""}
+      </div>
+
+      {p.openedSets?.length ? (
+        <div style={styles.runsRailSets}>
+          {p.openedSets.map((set, i) => {
+            const isTarget = target?.playerId === p.id && target?.runIndex === i;
+            return (
+              <div
+                key={i}
+                onClick={() => {
+                  sfx.click();
+                  setTarget({ playerId: p.id, runIndex: i });
+                }}
+                style={{ cursor: "pointer", touchAction: "manipulation" }}
+              >
+                <FanSet set={set} isTarget={isTarget} />
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={styles.runsRailEmpty}>—</div>
+      )}
+    </div>
+  ))}
+</div>
 
     {/* HAND DOCK (outside tableArea so it never stretches center) */}
     <div style={styles.handDock}>
@@ -1003,7 +1036,7 @@ const styles = {
       "linear-gradient(180deg, #0b3b2e 0%, #06261e 60%, #041b15 100%)",
     color: stylesTokens.textStrong,
     paddingTop: 0,
-    paddingBottom: 84
+    paddingBottom: 260
   },
 
   rotateWrap: {
@@ -1088,7 +1121,7 @@ const styles = {
     display: "grid",
     gridTemplateRows: "auto 1fr auto",
     gap: 8,
-    height: "calc(100svh - 160px)",
+    height: "calc(100svh - 220px)",
     minHeight: 0
   },
 
@@ -1561,5 +1594,37 @@ runsRailEmpty: {
   fontWeight: 900,
   padding: "6px 2px"
 },
+runsRail: {
+  position: "fixed",
+  left: 10,
+  top: 72,          // below top bar
+  bottom: 220,      // above hand + action bar
+  width: 240,
+  overflowY: "auto",
+  paddingRight: 6,
+  zIndex: 40,
+  pointerEvents: "auto"
+},
+
+runsRailBlock: {
+  marginBottom: 10,
+  background: "rgba(0,0,0,0.20)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: 14,
+  padding: 10
+},
+
+runsRailName: {
+  fontWeight: 950,
+  fontSize: 12,
+  opacity: 0.9,
+  marginBottom: 8,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis"
+},
+
+runsRailSets: { display: "flex", flexDirection: "column", gap: 8 },
+runsRailEmpty: { opacity: 0.6, fontWeight: 900 }
 
 };
