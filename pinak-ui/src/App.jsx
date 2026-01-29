@@ -465,7 +465,8 @@ useEffect(() => {
   if (!game || !me) return;
   if (game.roundOver || game.gameOver) return;
 
-  const isTurnNow = game.players?.[game.turn]?.id === me.id;
+  // only the current turn player should trigger it
+  const isTurnNow = game.players?.[game.turn]?.id === socket.id;
   if (!isTurnNow) return;
 
   const handEmpty = (me.hand?.length || 0) === 0;
@@ -478,7 +479,15 @@ useEffect(() => {
   sfx.run();
   socket.emit("playerWentOut", { room: game.room });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [game, me]);
+}, [game?.turn, game?.roundOver, game?.gameOver, me?.hand?.length]);
+
+/* ---------- RESET wentOut FLAG WHEN HAND REFILLS ---------- */
+useEffect(() => {
+  if (!me) return;
+  if ((me.hand?.length || 0) > 0) {
+    wentOutSentRef.current = false;
+  }
+}, [me?.hand?.length]);
 
   /* ---------- HELPERS ---------- */
   function toggleCard(id) {
@@ -618,8 +627,8 @@ useEffect(() => {
 
   const fanCount = sortedHand.length || 1;
 
-  const xSpread = Math.min(220, 70 + fanCount * 6.5);
-  const fanMax = Math.min(78, 34 + fanCount * 1.35);
+  const xSpread = Math.min(260, 150 + fanCount * 7.0);
+  const fanMax = Math.min(70, 34 + fanCount * 1.05);
 
   const yLift = 28;
   const dropFactor = 0.24;
@@ -1634,7 +1643,7 @@ runsRail: {
   position: "fixed",
   left: 10,
   top: 72,          // below top bar
-  bottom: 220,      // above hand + action bar
+  bottom: 84,      // above hand + action bar
   width: 240,
 
   zIndex: 300,
