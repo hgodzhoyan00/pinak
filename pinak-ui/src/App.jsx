@@ -85,26 +85,59 @@ function FanSet({ set, isTarget, compact = true }) {
           const x = (t - 0.5) * totalW;
           const y = lift - Math.abs(rot) * dropK;
 
-          return (
-            <span
-              key={c.id || i}
-              style={{
-                ...(compact ? styles.fanCardCompact : styles.fanCard),
-                position: "absolute",
-                left: "50%",
-                bottom: 0,
-                transform: `translateX(-50%) translateX(${x}px) translateY(${y}px) rotate(${rot}deg)`,
-                transformOrigin: "50% 95%",
-                background: cardFaceBg(c),
-                color: suitColor(c.suit),
-                zIndex: i
-              }}
-            >
-              {c.value}
-              {c.suit}
-            </span>
-          );
-        })}
+return (
+  <span
+    key={c.id || i}
+    style={{
+      ...(compact ? styles.fanCardCompact : styles.fanCard),
+      position: "absolute",
+      left: "50%",
+      bottom: 0,
+      transform: `translateX(-50%) translateX(${x}px) translateY(${-y}px) rotate(${rot}deg)`,
+      transformOrigin: "50% 95%",
+      background: cardFaceBg(c),
+      overflow: "hidden"
+    }}
+  >
+    {/* top-left pip */}
+    <div
+      style={{
+        position: "absolute",
+        top: 4,
+        left: 4,
+        display: "flex",
+        flexDirection: "column",
+        lineHeight: 1,
+        fontWeight: 950,
+        fontSize: compact ? 9 : 10,
+        color: suitColor(c.suit)
+      }}
+    >
+      <span>{c.value}</span>
+      <span style={{ marginTop: 1 }}>{c.suit}</span>
+    </div>
+
+    {/* bottom-right pip */}
+    <div
+      style={{
+        position: "absolute",
+        bottom: 4,
+        right: 4,
+        display: "flex",
+        flexDirection: "column",
+        lineHeight: 1,
+        fontWeight: 950,
+        fontSize: compact ? 9 : 10,
+        color: suitColor(c.suit),
+        transform: "rotate(180deg)"
+      }}
+    >
+      <span>{c.value}</span>
+      <span style={{ marginTop: 1 }}>{c.suit}</span>
+    </div>
+  </span>
+);
+})}
 
         {extra > 0 && (
           <span
@@ -866,7 +899,7 @@ return (
         position: "absolute",
         left: "50%",
         bottom: 0,
-        transform: `translateX(calc(-50% + ${hitX}px))`,
+        transform: `translateX(-50%) translateX(${hitX}px)`,
         width: hitW,
         height: hitH,
         zIndex: z,
