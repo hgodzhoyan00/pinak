@@ -584,7 +584,7 @@ export default function App() {
   const yLift = 28;
   const dropFactor = 0.24;
   
-  const handCardSize = { width: 46, height: 64, fontSize: 14, borderRadius: 12 };
+  const handCardSize = { width: 56, height: 74, fontSize: 16, borderRadius: 12 };
   const miniCardSizeStyle = { width: 36, height: 50, borderRadius: 12 };
 
 return (
@@ -1227,7 +1227,16 @@ const styles = {
 
   emptySets: { color: stylesTokens.textMuted, fontWeight: 900, padding: "6px 2px" },
 
-  fanSet: { flex: "0 0 auto", borderRadius: 14, padding: "8px 10px", border: "1px solid rgba(255,255,255,0.12)" },
+  fanSet: { 
+    position: "relative",
+    display: "block ",
+    flex: "0 0 auto", 
+    borderRadius: 14, 
+    padding: "8px 10px", 
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(0,0,0,0.22)",
+  },
+
   fanSetRow: { display: "flex", gap: 6, flexWrap: "nowrap", alignItems: "center" },
 
   fanCard: {
@@ -1418,7 +1427,7 @@ const styles = {
     position: "fixed",
     left: 0,
     right: 0,
-    bottom: 60, // sits just above action bar
+    bottom: 70, // sits just above action bar
     height: 220,
     pointerEvents: "none",
     zIndex: 600
@@ -1511,10 +1520,13 @@ seatSetsRowCompact: {
 },
 
 fanSetCompact: {
+  position: "relative",
+  display: "block",
   flex: "0 0 auto",
   borderRadius: 12,
   padding: "6px 8px",
-  border: "1px solid rgba(255,255,255,0.10)"
+  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(0,0,0,0.16)",
 },
 
 fanSetRowCompact: {
@@ -1565,7 +1577,9 @@ runsRailName: {
 },
 
 runsRailSets: {
-  display: "grid",
+  position: "relative",
+  display: "flex",
+  flexDirection: "column",
   gap: 8
 },
 
@@ -1603,8 +1617,4 @@ runsRailName: {
   overflow: "hidden",
   textOverflow: "ellipsis"
 },
-
-runsRailSets: { display: "flex", flexDirection: "column", gap: 8 },
-runsRailEmpty: { opacity: 0.6, fontWeight: 900 }
-
 };
