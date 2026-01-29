@@ -1060,6 +1060,8 @@ const styles = {
     boxShadow: "0 14px 40px rgba(0,0,0,0.22)",
     backdropFilter: "blur(10px)",
     marginTop: -36,
+    position: "relative",
+    zIndex: 20
   },
 
   centerHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 6 },
@@ -1133,9 +1135,7 @@ const styles = {
   midCenter: { minWidth: 0 },
 
   rowBottom: { 
-    minHeight: 92, 
     paddingBottom: 6,
-    display: "flex",  
     alignItems: "flex-end" 
   },
 
@@ -1361,7 +1361,7 @@ const styles = {
     bottom: 24, // sits just above action bar
     height: 190,
     pointerEvents: "none",
-    zIndex: 200
+    zIndex: 5
 },
 
   handDockMeta: {
@@ -1384,7 +1384,8 @@ const styles = {
     width: "min(1100px, 98vw)",
     height: 160,
     overflow: "visible",
-    pointerEvents: "auto"    
+    pointerEvents: "auto",
+    zIndex: 30    
 },
 
   centerDrawRowCompact: {
