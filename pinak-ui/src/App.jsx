@@ -523,11 +523,11 @@ export default function App() {
 
   const fanCount = sortedHand.length || 1;
 
-  const xSpread = Math.min(140, 42 + fanCount * 3.6);
-  const fanMax = Math.min(62, 30 + fanCount * 1.0);
+  const xSpread = Math.min(160, 48 + fanCount * 3.8);
+  const fanMax = Math.min(68, 34 + fanCount * 1.05);
 
   const yLift = 28;
-  const dropFactor = 0.28;
+  const dropFactor = 0.32;
   
   const handCardSize = { width: 46, height: 64, fontSize: 14, borderRadius: 12 };
   const miniCardSizeStyle = { width: 36, height: 50, borderRadius: 12 };
@@ -1322,7 +1322,7 @@ const styles = {
   handFanDock: {
     position: "absolute",
     left: "50%",
-    bottom: 24,
+    bottom: 10,
     transform: "translateX(-50%)",
     width: "min(1100px, 98vw)",
     height: 160,
