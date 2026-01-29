@@ -56,16 +56,19 @@ function MiniCard({ card, selected, sizeStyle }) {
 }
 
 /* ---------- OPENED SETS (compact fan strip) ---------- */
-function FanSet({ set, isTarget, compact }) {
+function FanSet({ set, isTarget, compact = true }) {
   const maxShown = compact ? 6 : 10;
-  const cards = set.slice(0, maxShown);
-  const extra = set.length - cards.length;
+  const shown = (set || []).slice(0, maxShown);
+  const extra = (set || []).length - shown.length;
 
-  const spread = compact ? 10 : 14;     // horizontal spacing between cards
-  const tilt = compact ? 10 : 14;       // max rotation degrees
-  const lift = compact ? 10 : 14;       // arc height
+  // Tuning knobs
+  const tilt = compact ? 12 : 16;        // degrees
+  const spread = compact ? 12 : 16;      // px per step
+  const lift = compact ? 10 : 14;        // px arc height
+  const dropK = compact ? 0.55 : 0.60;   // arc drop factor
 
-  const count = cards.length || 1;
+  const count = shown.length || 1;
+  const totalW = spread * (count - 1);
 
   return (
     <div
@@ -75,12 +78,12 @@ function FanSet({ set, isTarget, compact }) {
         background: isTarget ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.16)"
       }}
     >
-      <div style={{ ...(compact ? styles.fanStackCompact : styles.fanStack) }}>
-        {cards.map((c, i) => {
+      <div style={compact ? styles.fanStackCompact : styles.fanStack}>
+        {shown.map((c, i) => {
           const t = count <= 1 ? 0.5 : i / (count - 1);
           const rot = (t - 0.5) * 2 * tilt;
-          const x = (t - 0.5) * spread * (count - 1);
-          const y = lift - Math.abs(rot) * (compact ? 0.55 : 0.6);
+          const x = (t - 0.5) * totalW;
+          const y = lift - Math.abs(rot) * dropK;
 
           return (
             <span
@@ -93,7 +96,8 @@ function FanSet({ set, isTarget, compact }) {
                 transform: `translateX(-50%) translateX(${x}px) translateY(${y}px) rotate(${rot}deg)`,
                 transformOrigin: "50% 95%",
                 background: cardFaceBg(c),
-                color: suitColor(c.suit)
+                color: suitColor(c.suit),
+                zIndex: i
               }}
             >
               {c.value}
@@ -119,7 +123,8 @@ function FanSet({ set, isTarget, compact }) {
       </div>
     </div>
   );
-}/* ---------- SEAT ---------- */
+}
+/* ---------- SEAT ---------- */
 function Seat({
   pos,
   player,
@@ -424,21 +429,20 @@ export default function App() {
 
   /* ---------- AUTO END ROUND (no button) ---------- */
   useEffect(() => {
-    if (!game || !me) return;
-    if (!canAct || !isMyTurn) return;
-    if (game.roundOver || game.gameOver) return;
+  if (!game || !me) return;
+  if (!isMyTurn) return;
+  if (game.roundOver || game.gameOver) return;
 
-    const handEmpty = (me.hand?.length || 0) === 0;
-    if (!handEmpty) return;
+  const handEmpty = (me.hand?.length || 0) === 0;
+  if (!handEmpty) return;
 
-    if (wentOutSentRef.current) return;
-    wentOutSentRef.current = true;
+  if (wentOutSentRef.current) return;
+  wentOutSentRef.current = true;
 
-    ensureAudio();
-    sfx.run();
-    socket.emit("playerWentOut", { room: game.room });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game, me, canAct, isMyTurn]);
+  ensureAudio();
+  sfx.run();
+  socket.emit("playerWentOut", { room: game.room });
+}, [game, me?.hand?.length, isMyTurn]); // 👈 important deps
 
   /* ---------- HELPERS ---------- */
   function toggleCard(id) {
@@ -840,8 +844,8 @@ return (
 
   // ✅ compute per-card step FIRST (so tap lanes never overlap)
   const step = fanCount <= 1 ? handCardSize.width : xSpread / (fanCount - 1);
-  const hitW = Math.max(18, Math.min(handCardSize.width, step * 0.92));
-  const hitH = handCardSize.height + 90;
+  const hitW = Math.max(26, Math.min(handCardSize.width, step * 0.98));
+  const hitH = handCardSize.height + 95;
 
   // visual lift only
   const drop = Math.abs(rot) * dropFactor;
@@ -1645,6 +1649,17 @@ runsRailScore: {
   borderRadius: 999,
   background: "rgba(0,0,0,0.28)",
   border: "1px solid rgba(255,255,255,0.14)"
+},
+
+fanStack: {
+  position: "relative",
+  height: 60,
+  overflow: "visible"
+},
+fanStackCompact: {
+  position: "relative",
+  height: 56,
+  overflow: "visible"
 },
 
 };
