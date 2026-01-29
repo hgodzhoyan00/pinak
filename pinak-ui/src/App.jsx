@@ -729,7 +729,7 @@ export default function App() {
               <span>Discard: {discardPick ? "✓" : "—"}</span>
             </div>
 
-            <motion.div variants={handVariants} initial="hidden" animate="show" style={styles.handFanDock}>
+            <motion.div variants={handVariants} initial="hidden" animate="show" style={{...styles.handFanDock, position: "relative",}}>
               <AnimatePresence initial={false}>
                 {sortedHand.map((c, idx) => {
                   const isRunSelected = selected.includes(c.id);
@@ -749,11 +749,11 @@ export default function App() {
                       style={{
                         ...styles.card,
                         ...handCardSize,
-                        position: "relative",
+                        position: "absolute",
                         padding: 6,
                         left: "50%",
                         bottom: 0,
-                        translateX: "-50%",
+                        transform: "translateX(-50%)",
                         rotate: rot,
                         x,
                         y,
@@ -1311,13 +1311,12 @@ const styles = {
   },
 
   handDock: {
-    position: "relative",
-    marginTop: 6,
+    position: "fixed",
     left: 0,
     right: 0,
-    bottom: 24, // sits just above action bar
-    height: 130,
-    pointerEvents: "auto",
+    bottom: 70, // sits just above action bar
+    height: 190,
+    pointerEvents: "none",
     zIndex: 200
 },
 
@@ -1339,8 +1338,9 @@ const styles = {
     bottom: 55,
     transform: "translateX(-50%)",
     width: "min(1100px, 98vw)",
-    height: 140,
-    overflow: "visible"
+    height: 160,
+    overflow: "visible",
+    pointerEvents: "auto"    
 },
 
   centerDrawRowCompact: {
