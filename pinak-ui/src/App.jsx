@@ -124,7 +124,17 @@ function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick, compact,
   if (!player) return null;
 
   const headerStyle = { ...styles.seatHeader, ...(isTurn ? styles.seatHeaderTurn : null) };
-
+  const seatStyle =
+    pos === "bottom"
+      ? {
+          position: "absolute",
+          left: 12,
+          right: 12,
+          bottom: 210, // adjust later if needed
+          pointerEvents: "auto",
+          zIndex: 50
+        }
+      : null;
 return (
   <div style={{ ...styles.seat, ...(styles[`seat_${pos}`] || {}) }}>
       {!hideHeader && (
@@ -173,7 +183,7 @@ return (
             );
           })
         ) : (
-          <div style={styles.emptySets}>—</div>
+          !hideHeader && <div style={styles.emptySets}>—</div>
         )}
       </div>
     )}
@@ -675,7 +685,7 @@ export default function App() {
                           setTarget={setTarget}
                           sfxClick={sfx.click}
                           compact={false}
-                          hideHeader
+                          hideHeader={true}
                         />
                       </div>
                       <MiniCard card={c} selected={i < openCount} sizeStyle={miniCardSizeStyle} />
