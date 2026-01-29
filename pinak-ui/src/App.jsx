@@ -120,10 +120,23 @@ function FanSet({ set, isTarget, compact }) {
     </div>
   );
 }/* ---------- SEAT ---------- */
-function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick, compact, hideHeader }) {
+function Seat({
+  pos,
+  player,
+  isMe,
+  isTurn,
+  target,
+  setTarget,
+  sfxClick,
+  compact,
+  hideHeader,
+  showSets = true
+}) {
   if (!player) return null;
 
   const headerStyle = { ...styles.seatHeader, ...(isTurn ? styles.seatHeaderTurn : null) };
+
+  // ✅ If you want the bottom seat to be positioned specially, apply it here
   const seatStyle =
     pos === "bottom"
       ? {
@@ -135,61 +148,63 @@ function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick, compact,
           zIndex: 50
         }
       : null;
-return (
-  <div style={{ ...styles.seat, ...(styles[`seat_${pos}`] || {}) }}>
 
+  return (
+    <div style={{ ...styles.seat, ...(styles[`seat_${pos}`] || {}), ...(seatStyle || {}) }}>
+      {/* HEADER */}
       {!hideHeader && (
-      <div style={headerStyle}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <div
-            style={{
-              fontWeight: 950,
-              color: stylesTokens.textStrong,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              maxWidth: pos === "bottom" ? 240 : 160
-            }}
-          >
-            {player.name}
-            {isMe ? " (You)" : ""}
+        <div style={headerStyle}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            <div
+              style={{
+                fontWeight: 950,
+                color: stylesTokens.textStrong,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                maxWidth: pos === "bottom" ? 240 : 160
+              }}
+            >
+              {player.name}
+              {isMe ? " (You)" : ""}
+            </div>
+            {isTurn && <span style={{ opacity: 0.9 }}>⬅</span>}
           </div>
-          {isTurn && <span style={{ opacity: 0.9 }}>⬅</span>}
-        </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Badge>{player.score}</Badge>
-          <Badge>{player.hand?.length ?? 0}🂠</Badge>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Badge>{player.score}</Badge>
+            <Badge>{player.hand?.length ?? 0}🂠</Badge>
+          </div>
         </div>
-      </div>
-    )}
+      )}
 
-    {!compact && (
-      <div style={styles.seatSetsRow}>
-        {player.openedSets?.length ? (
-          player.openedSets.map((set, i) => {
-            const isTarget = target?.playerId === player.id && target?.runIndex === i;
-            return (
-              <div
-                key={i}
-                onClick={() => {
-                  sfxClick?.();
-                  setTarget?.({ playerId: player.id, runIndex: i });
-                }}
-                style={{ flex: "0 0 auto", cursor: "pointer", touchAction: "manipulation" }}
-                title="Tap to target this run"
-              >
-                <FanSet set={set} isTarget={isTarget} />
-              </div>
-            );
-          })
-        ) : (
-          !hideHeader && <div style={styles.emptySets}>—</div>
-        )}
-      </div>
-    )}
-  </div>
- );
+      {/* OPENED SETS */}
+      {!compact && showSets && (
+        <div style={styles.seatSetsRow}>
+          {player.openedSets?.length ? (
+            player.openedSets.map((set, i) => {
+              const isTarget = target?.playerId === player.id && target?.runIndex === i;
+              return (
+                <div
+                  key={i}
+                  onClick={() => {
+                    sfxClick?.();
+                    setTarget?.({ playerId: player.id, runIndex: i });
+                  }}
+                  style={{ flex: "0 0 auto", cursor: "pointer", touchAction: "manipulation" }}
+                  title="Tap to target this run"
+                >
+                  <FanSet set={set} isTarget={isTarget} />
+                </div>
+              );
+            })
+          ) : (
+            <div style={styles.emptySets}>—</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function RotateOverlay() {
@@ -572,307 +587,273 @@ export default function App() {
   const handCardSize = { width: 46, height: 64, fontSize: 14, borderRadius: 12 };
   const miniCardSizeStyle = { width: 36, height: 50, borderRadius: 12 };
 
-    return (
-    <div style={styles.table}>
+return (
+  <div style={styles.table}>
     {/* TOP BAR */}
-<div style={styles.topBar}>
-  {/* Left */}
-  <div style={styles.topBarLeft}>
-    <div style={styles.miniLabel}>Room</div>
-    <div style={styles.title}>{game.room}</div>
-  </div>
+    <div style={styles.topBar}>
+      <div style={styles.topBarLeft}>
+        <div style={styles.miniLabel}>Room</div>
+        <div style={styles.title}>{game.room}</div>
+      </div>
 
-  {/* Center */}
-  <div style={styles.topBarCenter}>
-    {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
-      <div style={styles.turnPillTop}>🔥 YOUR TURN</div>
-    )}
-  </div>
+      <div style={styles.topBarCenter}>
+        {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
+          <div style={styles.turnPillTop}>🔥 YOUR TURN</div>
+        )}
+      </div>
 
-  {/* Right */}
-  <div style={styles.topBarRight}>
-    <div style={{ textAlign: "right" }}>
-      <div style={styles.miniLabel}>Turn</div>
-      <div style={styles.title}>{isMyTurn ? "You" : game.players[game.turn]?.name}</div>
+      <div style={styles.topBarRight}>
+        <div style={{ textAlign: "right" }}>
+          <div style={styles.miniLabel}>Turn</div>
+          <div style={styles.title}>{isMyTurn ? "You" : game.players[game.turn]?.name}</div>
+        </div>
+
+        <button
+          style={styles.soundBtn}
+          onClick={() => {
+            ensureAudio();
+            setSoundOn((v) => !v);
+          }}
+          title="Sound"
+        >
+          {soundOn ? "🔊" : "🔇"}
+        </button>
+      </div>
     </div>
 
-    <button
-      style={styles.soundBtn}
-      onClick={() => {
-        ensureAudio();
-        setSoundOn((v) => !v);
-      }}
-      title="Sound"
-    >
-      {soundOn ? "🔊" : "🔇"}
-    </button>
-  </div>
-</div>
-      {/* BANNER */}
-      {(game.gameOver || game.roundOver) && (
-        <div style={styles.bannerNeutral}>
-          <div>{game.gameOver ? "🏁 Game Over" : "✅ Round Over"}</div>
+    {/* BANNER */}
+    {(game.gameOver || game.roundOver) && (
+      <div style={styles.bannerNeutral}>
+        <div>{game.gameOver ? "🏁 Game Over" : "✅ Round Over"}</div>
 
-          {game.roundOver && !game.gameOver && (
-            <button style={{ ...styles.primaryBtn, marginTop: 10 }} onClick={continueNextRound}>
-              ▶️ Start Next Round
-            </button>
-          )}
-        </div>
-      )}
+        {game.roundOver && !game.gameOver && (
+          <button style={{ ...styles.primaryBtn, marginTop: 10 }} onClick={continueNextRound}>
+            ▶️ Start Next Round
+          </button>
+        )}
+      </div>
+    )}
 
-      {/* TABLE AREA */}
-      <div style={styles.tableArea}>
-        <div style={styles.rowTop}>
+    {/* TABLE AREA */}
+    <div style={styles.tableArea}>
+      <div style={styles.rowTop}>
+        <Seat
+          pos="top"
+          player={topPlayer}
+          isMe={false}
+          isTurn={game.players[game.turn]?.id === topPlayer?.id}
+          target={target}
+          setTarget={setTarget}
+          sfxClick={sfx.click}
+          compact={true}
+        />
+      </div>
+
+      <div style={styles.rowMid}>
+        {/* LEFT */}
+        <div style={styles.midSide}>
           <Seat
-            pos="top"
-            player={topPlayer}
+            pos="left"
+            player={pLeft}
             isMe={false}
-            isTurn={game.players[game.turn]?.id === topPlayer?.id}
+            isTurn={game.players[game.turn]?.id === pLeft?.id}
+            target={target}
+            setTarget={setTarget}
+            sfxClick={sfx.click}
+            compact={true}
+          />
+
+          <div style={styles.runsRail}>
+            {game.players
+              .filter((p) => p.id !== me.id)
+              .map((p) => (
+                <div key={p.id} style={styles.runsRailBlock}>
+                  <div style={styles.runsRailName}>{p.name}</div>
+
+                  {p.openedSets?.length ? (
+                    <div style={styles.runsRailSets}>
+                      {p.openedSets.map((set, i) => {
+                        const isTarget = target?.playerId === p.id && target?.runIndex === i;
+                        return (
+                          <div
+                            key={i}
+                            onClick={() => {
+                              sfx.click();
+                              setTarget({ playerId: p.id, runIndex: i });
+                            }}
+                            style={{ cursor: "pointer", touchAction: "manipulation" }}
+                            title="Tap to target this run"
+                          >
+                            <FanSet set={set} isTarget={isTarget} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={styles.runsRailEmpty}>—</div>
+                  )}
+                </div>
+              ))}
+          </div>
+        </div>
+
+        {/* CENTER */}
+        <div style={styles.midCenter}>
+          <div style={styles.center}>
+            <div style={styles.centerCard}>
+              <div style={styles.centerHeader}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontWeight: 950 }}>Open Stack</span>
+                  <Badge>Pick: {openCount}</Badge>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Badge>Target: {target ? "✓" : "—"}</Badge>
+                </div>
+              </div>
+
+              <div style={styles.centerOpenRow}>
+                {openTopFirst.map((c, i) => (
+                  <div
+                    key={c.id || i}
+                    onClick={() => selectOpen(i)}
+                    style={{
+                      cursor: canSelectOpen ? "pointer" : "not-allowed",
+                      opacity: canSelectOpen ? 1 : 0.45,
+                      flex: "0 0 auto",
+                      touchAction: "manipulation"
+                    }}
+                  >
+                    <MiniCard card={c} selected={i < openCount} sizeStyle={miniCardSizeStyle} />
+                  </div>
+                ))}
+              </div>
+
+              <div style={styles.centerDrawRowCompact}>
+                <button
+                  style={styles.drawBtnCompact}
+                  disabled={!canDraw}
+                  onClick={() => {
+                    ensureAudio();
+                    sfx.draw();
+                    safeEmit("drawClosed", { room: game.room });
+                  }}
+                  title="Draw 1 from Closed"
+                >
+                  🂠 <span style={styles.drawBtnText}>Closed</span>
+                </button>
+
+                <button
+                  style={styles.drawBtnCompact}
+                  disabled={!canDraw || openCount < 1 || openCount > (game.open?.length || 0)}
+                  onClick={() => {
+                    ensureAudio();
+                    sfx.draw();
+                    safeEmit("drawOpen", { room: game.room, count: openCount });
+                  }}
+                  title="Draw from Open"
+                >
+                  🂡 <span style={styles.drawBtnText}>Open</span>
+                </button>
+              </div>
+
+              <div style={styles.centerDivider} />
+
+              <div style={styles.scoreMini}>
+                {game.players.map((p) => {
+                  const isTurnNow = p.id === game.players[game.turn]?.id;
+                  return (
+                    <div
+                      key={p.id}
+                      style={{
+                        ...styles.scoreMiniRow,
+                        background: isTurnNow ? "rgba(92, 204, 255, 0.18)" : "transparent",
+                        border: isTurnNow ? "1px solid rgba(120, 220, 255, 0.55)" : "1px solid transparent"
+                      }}
+                    >
+                      <span style={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {p.name}
+                      </span>
+                      <span style={{ fontWeight: 950 }}>{p.score}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT */}
+        <div style={styles.midSide}>
+          <Seat
+            pos="right"
+            player={pRight}
+            isMe={false}
+            isTurn={game.players[game.turn]?.id === pRight?.id}
             target={target}
             setTarget={setTarget}
             sfxClick={sfx.click}
             compact={true}
           />
         </div>
-
-        <div style={styles.rowMid}>
-          <div style={styles.midSide}>
-            <Seat
-              pos="left"
-              player={pLeft}
-              isMe={false}
-              isTurn={game.players[game.turn]?.id === pLeft?.id}
-              target={target}
-              setTarget={setTarget}
-              sfxClick={sfx.click}
-              compact={true}
-            />
-          </div>
-
-          <div style={styles.midCenter}>
-            <div style={styles.center}>
-              
-              <div style={styles.centerCard}>
-                <div style={styles.centerHeader}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontWeight: 950 }}>Open Stack</span>
-                    <Badge>Pick: {openCount}</Badge>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Badge>Target: {target ? "✓" : "—"}</Badge>
-                  </div>
-                </div>
-
-                <div style={styles.centerOpenRow}>
-                  {openTopFirst.map((c, i) => (
-                    <div
-                      key={c.id || i}
-                      onClick={() => selectOpen(i)}
-                      style={{
-                        cursor: canSelectOpen ? "pointer" : "not-allowed",
-                        opacity: canSelectOpen ? 1 : 0.45,
-                        flex: "0 0 auto",
-                        touchAction: "manipulation"
-                      }}
-                    >
-                      
-                      <MiniCard card={c} selected={i < openCount} sizeStyle={miniCardSizeStyle} />
-                    </div>
-                  ))}
-                </div>
-
-                {/* TWO SQUARE DRAW BUTTONS */}
-                <div style={styles.centerDrawRowCompact}>
-                  <button
-                    style={styles.drawBtnCompact}
-                    disabled={!canDraw}
-                    onClick={() => {
-                      ensureAudio();
-                      sfx.draw();
-                      safeEmit("drawClosed", { room: game.room });
-                    }}
-                    title="Draw 1 from Closed"
-                  >
-                    🂠 <span style={styles.drawBtnText}>Closed</span>
-                  </button>
-
-                  <button
-                    style={styles.drawBtnCompact}
-                    disabled={!canDraw || openCount < 1 || openCount > (game.open?.length || 0)}
-                    onClick={() => {
-                      ensureAudio();
-                      sfx.draw();
-                      safeEmit("drawOpen", { room: game.room, count: openCount });
-                    }}
-                    title="Draw from Open"
-                  >
-                    🂡 <span style={styles.drawBtnText}>Open</span>
-                  </button>
-                </div>
-
-                <div style={styles.centerDivider} />
-
-                <div style={styles.scoreMini}>
-                  {game.players.map((p) => {
-                    const isTurnNow = p.id === game.players[game.turn]?.id;
-                    return (
-                      <div
-                        key={p.id}
-                        style={{
-                          ...styles.scoreMiniRow,
-                          background: isTurnNow ? "rgba(92, 204, 255, 0.18)" : "transparent",
-                          border: isTurnNow ? "1px solid rgba(120, 220, 255, 0.55)" : "1px solid transparent"
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontWeight: 950,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap"
-                          }}
-                        >
-                          {p.name}
-                        </span>
-                        <span style={{ fontWeight: 950 }}>{p.score}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div style={styles.midSide}>
-            <Seat
-              pos="right"
-              player={pRight}
-              isMe={false}
-              isTurn={game.players[game.turn]?.id === pRight?.id}
-              target={target}
-              setTarget={setTarget}
-              sfxClick={sfx.click}
-              compact={true}
-            />
-          </div>
-        </div>
-
-        {/* BOTTOM */}
-        <div style={styles.rowBottom}>
-          <Seat
-            pos="bottom"
-            player={pBottom}
-            isMe={true}
-            isTurn={isMyTurn}
-            target={target}
-            setTarget={setTarget}
-            sfxClick={sfx.click}
-            compact={false}
-            hideHeader={true}   
-          />
-        </div>
       </div>
-          <div style={styles.handDock}>
-            <div style={styles.handDockMeta}>
-              <span>Run: {selected.length}</span>
-              <span>Discard: {discardPick ? "✓" : "—"}</span>
-            </div>
 
-            <motion.div variants={handVariants} initial="hidden" animate="show" style={{...styles.handFanDock, position: "relative",}}>
-              <AnimatePresence initial={false}>
-                {sortedHand.map((c, idx) => {
-                  const isRunSelected = selected.includes(c.id);
-                  const isDiscard = discardPick === c.id;
-                  const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
-                  const rot = (t - 0.5) * 2 * fanMax;
+      {/* bottom row exists but you can leave it empty */}
+      <div style={styles.rowBottom} />
+    </div>
 
-                  const drop = Math.abs(rot) * dropFactor;
-                  const y = yLift - drop;
-                  const x = (t - 0.5) * xSpread;
+    {/* HAND DOCK (outside tableArea so it never stretches center) */}
+    <div style={styles.handDock}>
+      <div style={styles.handDockMeta}>
+        <span>Run: {selected.length}</span>
+        <span>Discard: {discardPick ? "✓" : "—"}</span>
+      </div>
 
-                  return (
-                    <motion.div
-                      key={c.id}
-                      variants={cardVariants}
-                      style={{
-                        ...styles.card,
-                        ...handCardSize,
-                        position: "absolute",
-                        padding: 6,
-                        left: "50%",
-                        bottom: 0,
-                        transform: "translateX(-50%)",
-                        rotate: rot,
-                        x,
-                        y,
-                        transformOrigin: "50% 95%",
-                        background: cardFaceBg(c),
-                        border: isDiscard
-                          ? "2px solid #ff4d4d"
-                          : isRunSelected
-                          ? "2px solid rgba(255,255,255,0.78)"
-                          : "1px solid rgba(0,0,0,0.22)",
-                        zIndex: idx
-                      }}                      
-                      onClick={() => toggleCard(c.id)}
-                    >
-                     {/* top-left pip */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 6,
-                        left: 6,
-                        display: "flex",
-                        flexDirection: "column",
-                        lineHeight: 1,
-                        fontWeight: 950,
-                        fontSize: 12,
-                        color: suitColor(c.suit)
-                      }}
-                    >
-                      <span>{c.value}</span>
-                      <span style={{ marginTop: 2 }}>{c.suit}</span>
-                    </div>
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        display: "grid",
-                        placeItems: "center",
-                        fontSize: 18,
-                        fontWeight: 900,
-                        opacity: 0.18,
-                        color: suitColor(c.suit),
-                        pointerEvents: "none"
-                      }}
-                    >
-                      {c.suit}
-                    </div>
-                    {/* bottom-right pip (rotated like a real card) */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        bottom: 6,
-                        right: 6,
-                        display: "flex",
-                        flexDirection: "column",
-                        lineHeight: 1,
-                        fontWeight: 950,
-                        fontSize: 12,
-                        color: suitColor(c.suit),
-                        transform: "rotate(180deg)"
-                      }}
-                    >
-                      <span>{c.value}</span>
-                      <span style={{ marginTop: 2 }}>{c.suit}</span>
-                    </div>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </motion.div>
-          </div>
+      <motion.div variants={handVariants} initial="hidden" animate="show" style={{ ...styles.handFanDock, position: "relative" }}>
+        <AnimatePresence initial={false}>
+          {sortedHand.map((c, idx) => {
+            const isRunSelected = selected.includes(c.id);
+            const isDiscard = discardPick === c.id;
+
+            const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
+            const rot = (t - 0.5) * 2 * fanMax;
+
+            const drop = Math.abs(rot) * dropFactor;
+            const y = yLift - drop;
+            const x = (t - 0.5) * xSpread;
+
+            return (
+              <motion.div
+                key={c.id}
+                variants={cardVariants}
+                style={{
+                  ...styles.card,
+                  ...handCardSize,
+                  position: "absolute",
+                  padding: 6,
+                  left: "50%",
+                  bottom: 0,
+                  transform: "translateX(-50%)",
+                  rotate: rot,
+                  x,
+                  y,
+                  transformOrigin: "50% 95%",
+                  background: cardFaceBg(c),
+                  border: isDiscard
+                    ? "2px solid #ff4d4d"
+                    : isRunSelected
+                    ? "2px solid rgba(255,255,255,0.78)"
+                    : "1px solid rgba(0,0,0,0.22)",
+                  zIndex: idx
+                }}
+                onClick={() => toggleCard(c.id)}
+              >
+                {/* ... your pip markup unchanged ... */}
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </motion.div>
+    </div>
 
       {toast && <div style={styles.toast}>{toast}</div>}
 
@@ -1479,6 +1460,44 @@ fanCardCompact: {
   fontWeight: 950,
   fontSize: 10,
   boxShadow: "0 8px 18px rgba(0,0,0,0.16)"
+},
+runsRail: {
+  position: "fixed",
+  left: 12,
+  top: 74, // below your top bar; adjust
+  bottom: 110, // above your action bar/hand
+  width: 170,
+  zIndex: 300,              // above center card
+  pointerEvents: "auto",
+  overflowY: "auto",
+  paddingRight: 6
+},
+
+runsRailBlock: {
+  marginBottom: 10,
+  background: "rgba(0,0,0,0.20)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  borderRadius: 14,
+  padding: 8,
+  backdropFilter: "blur(10px)"
+},
+
+runsRailName: {
+  fontWeight: 950,
+  fontSize: 12,
+  opacity: 0.9,
+  marginBottom: 6
+},
+
+runsRailSets: {
+  display: "grid",
+  gap: 8
+},
+
+runsRailEmpty: {
+  opacity: 0.6,
+  fontWeight: 900,
+  padding: "6px 2px"
 },
 
 };
