@@ -501,7 +501,7 @@ export default function App() {
 
   if (!me) return <p style={{ padding: 16, color: stylesTokens.textStrong }}>Syncing…</p>;
 
-  const openTopFirst = [...game.open].reverse();
+  const openTopFirst = [...(game.open || [])].reverse();
 
   /* ---------- SEAT MAPPING ---------- */
   const players = game.players || [];
@@ -522,13 +522,13 @@ export default function App() {
   };
 
   const fanCount = sortedHand.length || 1;
-  const xSpread = Math.min(78, 34 + fanCount * 2.2);
-  const fanMax = Math.min(42, 26 + fanCount * 0.7);
+
+  const xSpread = Math.min(110, 34 + fanCount * 3.2);
+  const fanMax = Math.min(55, 26 + fanCount * 0.9);
+
   const yLift = 28;
   const dropFactor = 0.28;
-  const y = yLift - drop - fanCount * 0.4;
   
-
   const handCardSize = { width: 46, height: 64, fontSize: 14, borderRadius: 12 };
   const miniCardSizeStyle = { width: 36, height: 50, borderRadius: 12 };
 
@@ -742,6 +742,7 @@ export default function App() {
                   const drop = Math.abs(rot) * dropFactor;
                   const y = yLift - drop;
                   const x = (t - 0.5) * xSpread;
+
                   return (
                     <motion.div
                       key={c.id}
@@ -933,17 +934,6 @@ const styles = {
   },
 
   pageLobby: { padding: 14, maxWidth: 520, margin: "0 auto", fontFamily: "system-ui" },
-
-  topBar: {
-    padding: "6px 12px",
-    maxWidth: 1100,
-    margin: "0 auto",
-    fontFamily: "system-ui",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    gap: 10
-  },
 
   miniLabel: { fontSize: 12, opacity: 0.85, color: stylesTokens.textMuted, fontWeight: 800 },
   title: { fontSize: 18, fontWeight: 950, letterSpacing: 0.2, color: stylesTokens.textStrong },
