@@ -756,28 +756,7 @@ return (
                 </button>
               </div>
 
-              <div style={styles.centerDivider} />
-
-              <div style={styles.scoreMini}>
-                {game.players.map((p) => {
-                  const isTurnNow = p.id === game.players[game.turn]?.id;
-                  return (
-                    <div
-                      key={p.id}
-                      style={{
-                        ...styles.scoreMiniRow,
-                        background: isTurnNow ? "rgba(92, 204, 255, 0.18)" : "transparent",
-                        border: isTurnNow ? "1px solid rgba(120, 220, 255, 0.55)" : "1px solid transparent"
-                      }}
-                    >
-                      <span style={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {p.name}
-                      </span>
-                      <span style={{ fontWeight: 950 }}>{p.score}</span>
-                    </div>
-                  );
-                })}
-              </div>
+              
             </div>
           </div>
         </div>
@@ -1458,7 +1437,7 @@ const styles = {
     position: "fixed",
     left: 0,
     right: 0,
-    bottom: 44, // sits just above action bar
+    bottom: 60, // sits just above action bar
     height: 220,
     pointerEvents: "none",
     zIndex: 600
