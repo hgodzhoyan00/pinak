@@ -584,7 +584,7 @@ export default function App() {
   const yLift = 28;
   const dropFactor = 0.24;
   
-  const handCardSize = { width: 56, height: 74, fontSize: 16, borderRadius: 12 };
+  const handCardSize = { width: 66, height: 84, fontSize: 16, borderRadius: 12 };
   const miniCardSizeStyle = { width: 36, height: 50, borderRadius: 12 };
 
 return (
@@ -1550,62 +1550,35 @@ fanCardCompact: {
 },
 runsRail: {
   position: "fixed",
-  left: 12,
-  top: 74, // below your top bar; adjust
-  bottom: 110, // above your action bar/hand
-  width: 170,
-  zIndex: 300,              // above center card
-  pointerEvents: "auto",
-  overflowY: "auto",
-  paddingRight: 6
-},
-
-runsRailBlock: {
-  marginBottom: 10,
-  background: "rgba(0,0,0,0.20)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  borderRadius: 14,
-  padding: 8,
-  backdropFilter: "blur(10px)"
-},
-
-runsRailName: {
-  fontWeight: 950,
-  fontSize: 12,
-  opacity: 0.9,
-  marginBottom: 6
-},
-
-runsRailSets: {
-  position: "relative",
-  display: "flex",
-  flexDirection: "column",
-  gap: 8
-},
-
-runsRailEmpty: {
-  opacity: 0.6,
-  fontWeight: 900,
-  padding: "6px 2px"
-},
-runsRail: {
-  position: "fixed",
   left: 10,
   top: 72,          // below top bar
   bottom: 220,      // above hand + action bar
   width: 240,
+
+  zIndex: 300,
+  pointerEvents: "auto",
+
   overflowY: "auto",
+  overflowX: "hidden",
+  WebkitOverflowScrolling: "touch",
+
   paddingRight: 6,
-  zIndex: 40,
-  pointerEvents: "auto"
+  padding: 10,
+
+  borderRadius: 14,
+  background: "rgba(0,0,0,0.18)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
+  backdropFilter: "blur(10px)",
 },
 
 runsRailBlock: {
   marginBottom: 10,
-  background: "rgba(0,0,0,0.20)",
+  background: "rgba(255,255,255,0.06)",
   border: "1px solid rgba(255,255,255,0.10)",
   borderRadius: 14,
-  padding: 10
+  padding: 10,
+  overflow: "hidden", // ✅ keeps FanSet inside the box
 },
 
 runsRailName: {
@@ -1615,6 +1588,19 @@ runsRailName: {
   marginBottom: 8,
   whiteSpace: "nowrap",
   overflow: "hidden",
-  textOverflow: "ellipsis"
+  textOverflow: "ellipsis",
 },
+
+runsRailSets: {
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+},
+
+runsRailEmpty: {
+  opacity: 0.6,
+  fontWeight: 900,
+  padding: "6px 2px",
+},
+
 };
