@@ -1419,10 +1419,10 @@ const styles = {
     position: "fixed",
     left: 0,
     right: 0,
-    bottom: 24, // sits just above action bar
-    height: 190,
+    bottom: 78, // sits just above action bar
+    height: 240,
     pointerEvents: "none",
-    zIndex: 5
+    zIndex: 600
 },
 
   handDockMeta: {
@@ -1438,14 +1438,12 @@ const styles = {
 },
 
   handFanDock: {
-    handFanDock: {
     position: "relative",           // ✅ cards anchor to this
     width: "min(1100px, 98vw)",
     height: 240,                    // ✅ room for big hitboxes
     margin: "0 auto",
     overflow: "visible",
-    pointerEvents: "auto"
-},   
+    pointerEvents: "auto"  
 },
 
   centerDrawRowCompact: {
