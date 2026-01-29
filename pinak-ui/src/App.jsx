@@ -851,11 +851,9 @@ return (
   const rot = (t - 0.5) * 2 * fanMax;
 
   const drop = Math.abs(rot) * dropFactor;
-  const visualY =
-    yLift - drop + 12 + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
+  const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
 
   const hitX = (t - 0.5) * xSpread;
-
   const z = isDiscard ? 5000 : isRunSelected ? 4000 : 1000 + idx;
 
   return (
@@ -864,11 +862,11 @@ return (
       onClick={() => toggleCard(c.id)}
       style={{
         position: "absolute",
-        left: "50%",
-        bottom: -10, // ✅ extends BELOW the fan
-        transform: `translateX(calc(-50% + ${hitX}px))`,
-        width: handCardSize.width + 44,      // ✅ wider tap zone
-        height: handCardSize.height + 130,   // ✅ much taller tap zone
+        left: `calc(50% + ${hitX}px)`,   // ✅ spacing happens here
+        bottom: -16,                     // ✅ makes bottom cards easier
+        transform: "translateX(-50%)",
+        width: handCardSize.width + 52,  // ✅ wider tap zone
+        height: handCardSize.height + 140,
         zIndex: z,
         pointerEvents: "auto",
         touchAction: "manipulation",
@@ -893,59 +891,39 @@ return (
             ? "2px solid #ff4d4d"
             : isRunSelected
             ? "2px solid rgba(255,255,255,0.78)"
-            : "1px solid rgba(0,0,0,0.22)"
+            : "1px solid rgba(0,0,0,0.22)",
+          pointerEvents: "none" // ✅ IMPORTANT: hitbox handles tap, card never blocks neighbors
         }}
       >
         {/* top-left pip */}
-        <div
-          style={{
-            position: "absolute",
-            top: 6,
-            left: 6,
-            display: "flex",
-            flexDirection: "column",
-            lineHeight: 1,
-            fontWeight: 950,
-            fontSize: 12,
-            color: suitColor(c.suit)
-          }}
-        >
+        <div style={{
+          position: "absolute", top: 6, left: 6,
+          display: "flex", flexDirection: "column",
+          lineHeight: 1, fontWeight: 950, fontSize: 12,
+          color: suitColor(c.suit)
+        }}>
           <span>{c.value}</span>
           <span style={{ marginTop: 2 }}>{c.suit}</span>
         </div>
 
-        {/* center suit watermark */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "grid",
-            placeItems: "center",
-            fontSize: 18,
-            fontWeight: 900,
-            opacity: 0.18,
-            color: suitColor(c.suit),
-            pointerEvents: "none"
-          }}
-        >
+        {/* watermark */}
+        <div style={{
+          position: "absolute", inset: 0,
+          display: "grid", placeItems: "center",
+          fontSize: 18, fontWeight: 900, opacity: 0.18,
+          color: suitColor(c.suit)
+        }}>
           {c.suit}
         </div>
 
         {/* bottom-right pip */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 6,
-            right: 6,
-            display: "flex",
-            flexDirection: "column",
-            lineHeight: 1,
-            fontWeight: 950,
-            fontSize: 12,
-            color: suitColor(c.suit),
-            transform: "rotate(180deg)"
-          }}
-        >
+        <div style={{
+          position: "absolute", bottom: 6, right: 6,
+          display: "flex", flexDirection: "column",
+          lineHeight: 1, fontWeight: 950, fontSize: 12,
+          color: suitColor(c.suit),
+          transform: "rotate(180deg)"
+        }}>
           <span>{c.value}</span>
           <span style={{ marginTop: 2 }}>{c.suit}</span>
         </div>
@@ -1460,14 +1438,14 @@ const styles = {
 },
 
   handFanDock: {
-    position: "absolute",
-    left: "50%",
-    bottom: 55,
-    transform: "translateX(-50%)",
+    handFanDock: {
+    position: "relative",           // ✅ cards anchor to this
     width: "min(1100px, 98vw)",
-    height: 220,
+    height: 240,                    // ✅ room for big hitboxes
+    margin: "0 auto",
     overflow: "visible",
-    pointerEvents: "auto"   
+    pointerEvents: "auto"
+},   
 },
 
   centerDrawRowCompact: {
