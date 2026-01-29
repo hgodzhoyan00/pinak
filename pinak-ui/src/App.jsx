@@ -126,8 +126,8 @@ function Seat({ pos, player, isMe, isTurn, target, setTarget, sfxClick, compact,
   const headerStyle = { ...styles.seatHeader, ...(isTurn ? styles.seatHeaderTurn : null) };
 
 return (
-  <div style={{ ...styles.seat, ...styles[`seat_${pos}`] }}>
-    {!hideHeader && (
+  <div style={{ ...styles.seat, ...(styles[`seat_${pos}`] || {}) }}>
+      {!hideHeader && (
       <div style={headerStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
           <div
@@ -1061,7 +1061,7 @@ const styles = {
     backdropFilter: "blur(10px)",
     marginTop: -36,
     position: "relative",
-    zIndex: 20
+    zIndex: 10
   },
 
   centerHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 6 },
@@ -1135,8 +1135,10 @@ const styles = {
   midCenter: { minWidth: 0 },
 
   rowBottom: { 
-    paddingBottom: 6,
-    alignItems: "flex-end" 
+    minHeight: 0,
+    position: "relative",
+    zIndex: 2,          // below centerCard (we’ll set centerCard higher)
+    pointerEvents: "auto" 
   },
 
   seatHeader: {
