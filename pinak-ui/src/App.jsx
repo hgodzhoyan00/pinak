@@ -1458,7 +1458,7 @@ const styles = {
     position: "fixed",
     left: 0,
     right: 0,
-    bottom: 20, // sits just above action bar
+    bottom: 44, // sits just above action bar
     height: 220,
     pointerEvents: "none",
     zIndex: 600
