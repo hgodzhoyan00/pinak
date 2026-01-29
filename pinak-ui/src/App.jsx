@@ -646,6 +646,7 @@ return (
           setTarget={setTarget}
           sfxClick={sfx.click}
           compact={true}
+          hideHeader={true}
         />
       </div>
 
@@ -661,6 +662,7 @@ return (
             setTarget={setTarget}
             sfxClick={sfx.click}
             compact={true}
+            hideHeader={true}
           />
 
           <div style={styles.runsRail}>
@@ -668,7 +670,10 @@ return (
               .filter((p) => p.id !== me.id)
               .map((p) => (
                 <div key={p.id} style={styles.runsRailBlock}>
-                  <div style={styles.runsRailName}>{p.name}</div>
+                  <div style={styles.runsRailNameRow}>
+                    <span style={styles.runsRailNameText}>{p.name}{p.id === me.id ? " (You)" : ""}</span>
+                    <span style={styles.runsRailScore}>{p.score ?? 0}</span>
+                  </div>
 
                   {p.openedSets?.length ? (
                     <div style={styles.runsRailSets}>
@@ -772,6 +777,7 @@ return (
             setTarget={setTarget}
             sfxClick={sfx.click}
             compact={true}
+            hideHeader={true}
           />
         </div>
       </div>
@@ -823,55 +829,64 @@ return (
       <motion.div variants={handVariants} initial="hidden" animate="show" style={{ ...styles.handFanDock, position: "relative" }}>
         <AnimatePresence initial={false}>
 {sortedHand.map((c, idx) => {
-  const isRunSelected = selected.includes(c.id);
-  const isDiscard = discardPick === c.id;
+const isRunSelected = selected.includes(c.id);
+const isDiscard = discardPick === c.id;
 
-  const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
-  const rot = (t - 0.5) * 2 * fanMax;
+const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
+const rot = (t - 0.5) * 2 * fanMax;
 
-  // spacing across the fan
-  const hitX = (t - 0.5) * xSpread;
+// spacing across the fan
+const hitX = (t - 0.5) * xSpread;
 
-  // visual lift only (DO NOT change zIndex)
-  const drop = Math.abs(rot) * dropFactor;
-  const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
+// visual lift only
+const drop = Math.abs(rot) * dropFactor;
+const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
 
-  return (
-    <div
-      key={c.id}
-      onClick={() => toggleCard(c.id)}
+// ✅ narrow “tap lane” so you don’t hit neighbors
+const hitW = Math.max(20, Math.min(handCardSize.width, xSpread * 0.55));
+const hitH = handCardSize.height + 90;
+
+return (
+  <div
+    key={c.id}
+    onPointerDown={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleCard(c.id);
+    }}
+    style={{
+      position: "absolute",
+      left: "50%",
+      bottom: 0,
+      transform: `translateX(calc(-50% + ${hitX}px))`,
+      width: hitW,              // ✅ this is the important change
+      height: hitH,             // ✅ easier bottom taps
+      zIndex: 1000 + idx,       // keep your stable order
+      pointerEvents: "auto",
+      touchAction: "none"       // ✅ prevents “ghost taps” / scroll conflicts
+    }}
+  >
+    <motion.div
+      variants={cardVariants}
       style={{
+        ...styles.card,
+        ...handCardSize,
         position: "absolute",
         left: "50%",
         bottom: 0,
-        transform: `translateX(calc(-50% + ${hitX}px))`,
-        width: handCardSize.width,
-        height: handCardSize.height + 70, // big vertical hit area
-        zIndex: 1000 + idx,               // ✅ stable order prevents blocking neighbors
-        pointerEvents: "auto",
-        touchAction: "manipulation"
+        transform: "translateX(-50%)",
+        padding: 6,
+        rotate: rot,
+        y: visualY,
+        transformOrigin: "50% 95%",
+        background: cardFaceBg(c),
+        border: isDiscard
+          ? "2px solid #ff4d4d"
+          : isRunSelected
+          ? "2px solid rgba(255,255,255,0.78)"
+          : "1px solid rgba(0,0,0,0.22)",
+        pointerEvents: "none"    // ✅ critical: wrapper owns the tap        }}
       }}
-    >
-      <motion.div
-        variants={cardVariants}
-        style={{
-          ...styles.card,
-          ...handCardSize,
-          position: "absolute",
-          left: 0,
-          bottom: 0,
-          padding: 6,
-          rotate: rot,
-          y: visualY,
-          transformOrigin: "50% 95%",
-          background: cardFaceBg(c),
-          border: isDiscard
-            ? "2px solid #ff4d4d"
-            : isRunSelected
-            ? "2px solid rgba(255,255,255,0.78)"
-            : "1px solid rgba(0,0,0,0.22)",
-          pointerEvents: "none" // ✅ clicks handled by wrapper, not the moving card
-        }}
       >
         {/* top-left pip */}
         <div
@@ -1601,6 +1616,32 @@ runsRailEmpty: {
   opacity: 0.6,
   fontWeight: 900,
   padding: "6px 2px",
+},
+runsRailNameRow: {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+  marginBottom: 8
+},
+
+runsRailNameText: {
+  fontWeight: 950,
+  fontSize: 12,
+  opacity: 0.95,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis"
+},
+
+runsRailScore: {
+  flex: "0 0 auto",
+  fontWeight: 950,
+  fontSize: 12,
+  padding: "4px 8px",
+  borderRadius: 999,
+  background: "rgba(0,0,0,0.28)",
+  border: "1px solid rgba(255,255,255,0.14)"
 },
 
 };
