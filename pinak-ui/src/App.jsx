@@ -847,41 +847,60 @@ return (
   const isRunSelected = selected.includes(c.id);
   const isDiscard = discardPick === c.id;
 
-  const t = fanCount <= 1 ? 0.5 : idx / (fanCount - 1);
+  const count = fanCount;
+
+  // --- FAN GEOMETRY (stable up to 20 cards) ---
+  const cardW = handCardSize.width;     // 46
+  const minEdge = 16;                   // how much of each card edge stays clickable/visible
+  const maxHalfSpread = 520;            // cap spread so it doesn't go off screen
+
+  const step = count <= 1
+    ? 0
+    : Math.min(maxHalfSpread, (count - 1) * minEdge) / (count - 1);
+
+  // hitbox X spacing (THIS prevents blocking)
+  const hitX = (idx - (count - 1) / 2) * step;
+
+  // rotation based on position in fan
+  const t = count <= 1 ? 0.5 : idx / (count - 1);
+  const fanMax = Math.min(60, 28 + count * 1.2);
   const rot = (t - 0.5) * 2 * fanMax;
 
+  // visual Y curve (visual only)
+  const yLift = 34;
+  const dropFactor = 0.22;
   const drop = Math.abs(rot) * dropFactor;
   const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
 
-  const hitX = (t - 0.5) * xSpread;
+  // z-index to keep selected/discard on top
   const z = isDiscard ? 5000 : isRunSelected ? 4000 : 1000 + idx;
 
   return (
+    // OUTER WRAPPER = BIG HITBOX + HORIZONTAL SPACING ONLY
     <div
       key={c.id}
       onClick={() => toggleCard(c.id)}
       style={{
         position: "absolute",
-        left: `calc(50% + ${hitX}px)`,   // ✅ spacing happens here
-        bottom: -16,                     // ✅ makes bottom cards easier
-        transform: "translateX(-50%)",
-        width: handCardSize.width + 52,  // ✅ wider tap zone
-        height: handCardSize.height + 140,
+        left: "50%",
+        bottom: 0,
+        transform: `translateX(calc(-50% + ${hitX}px))`,
+        width: cardW,
+        height: handCardSize.height + 120, // BIG click area for bottom cards
         zIndex: z,
         pointerEvents: "auto",
-        touchAction: "manipulation",
-        background: "transparent"
+        touchAction: "manipulation"
       }}
     >
+      {/* INNER CARD = VISUAL ONLY (rotate + y) */}
       <motion.div
         variants={cardVariants}
         style={{
           ...styles.card,
           ...handCardSize,
           position: "absolute",
-          left: "50%",
+          left: 0,
           bottom: 0,
-          transform: "translateX(-50%)",
           padding: 6,
           rotate: rot,
           y: visualY,
@@ -891,39 +910,59 @@ return (
             ? "2px solid #ff4d4d"
             : isRunSelected
             ? "2px solid rgba(255,255,255,0.78)"
-            : "1px solid rgba(0,0,0,0.22)",
-          pointerEvents: "none" // ✅ IMPORTANT: hitbox handles tap, card never blocks neighbors
+            : "1px solid rgba(0,0,0,0.22)"
         }}
       >
         {/* top-left pip */}
-        <div style={{
-          position: "absolute", top: 6, left: 6,
-          display: "flex", flexDirection: "column",
-          lineHeight: 1, fontWeight: 950, fontSize: 12,
-          color: suitColor(c.suit)
-        }}>
+        <div
+          style={{
+            position: "absolute",
+            top: 6,
+            left: 6,
+            display: "flex",
+            flexDirection: "column",
+            lineHeight: 1,
+            fontWeight: 950,
+            fontSize: 12,
+            color: suitColor(c.suit)
+          }}
+        >
           <span>{c.value}</span>
           <span style={{ marginTop: 2 }}>{c.suit}</span>
         </div>
 
-        {/* watermark */}
-        <div style={{
-          position: "absolute", inset: 0,
-          display: "grid", placeItems: "center",
-          fontSize: 18, fontWeight: 900, opacity: 0.18,
-          color: suitColor(c.suit)
-        }}>
+        {/* center suit watermark */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "grid",
+            placeItems: "center",
+            fontSize: 18,
+            fontWeight: 900,
+            opacity: 0.18,
+            color: suitColor(c.suit),
+            pointerEvents: "none"
+          }}
+        >
           {c.suit}
         </div>
 
         {/* bottom-right pip */}
-        <div style={{
-          position: "absolute", bottom: 6, right: 6,
-          display: "flex", flexDirection: "column",
-          lineHeight: 1, fontWeight: 950, fontSize: 12,
-          color: suitColor(c.suit),
-          transform: "rotate(180deg)"
-        }}>
+        <div
+          style={{
+            position: "absolute",
+            bottom: 6,
+            right: 6,
+            display: "flex",
+            flexDirection: "column",
+            lineHeight: 1,
+            fontWeight: 950,
+            fontSize: 12,
+            color: suitColor(c.suit),
+            transform: "rotate(180deg)"
+          }}
+        >
           <span>{c.value}</span>
           <span style={{ marginTop: 2 }}>{c.suit}</span>
         </div>
