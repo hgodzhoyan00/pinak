@@ -252,6 +252,9 @@ io.on("connection", (socket) => {
     if (!g || !p || p.id !== socket.id) return;
     if (g.roundOver || g.gameOver) return;
 
+    // ✅ must draw before opening any runs
+    if (!p.canDiscard) return;
+
     const ids = Array.isArray(cardIds) ? cardIds : [];
     if (ids.length < 3) return;
 
@@ -276,6 +279,9 @@ io.on("connection", (socket) => {
     const me = g.players.find((pp) => pp.id === socket.id);
     const owner = g.players.find((pp) => pp.id === targetPlayer);
     if (!me || !owner || !me.opened) return;
+
+    // ✅ must draw before adding to any run
+    if (!me.canDiscard) return;
 
     if (runIndex == null || runIndex < 0 || runIndex >= owner.openedSets.length) return;
 

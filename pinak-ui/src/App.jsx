@@ -880,151 +880,171 @@ return (
         <span>Discard: {discardPick ? "✓" : "—"}</span>
       </div>
 
-      <motion.div variants={handVariants} initial="hidden" animate="show" style={{ ...styles.handFanDock, position: "relative" }}>
-        <AnimatePresence initial={false}>
-
 {(() => {
   const fanCountLocal = sortedHand.length || 1;
 
-  // per-card spacing so tap lanes never overlap (scoped here = no redeclare errors)
-  const stepLocal = fanCountLocal <= 1 ? handCardSize.width : xSpread / (fanCountLocal - 1);
-  const hitWLocal = Math.max(18, Math.min(handCardSize.width, stepLocal * 0.92));
-  const hitHLocal = handCardSize.height + 90;
+  // Wider fan when the hand is huge
+  const xSpread =
+    fanCountLocal <= 12 ? 150 :
+    fanCountLocal <= 18 ? 210 :
+    280;
 
-  return sortedHand.map((c, idx) => {
-    const isRunSelected = selected.includes(c.id);
-    const isDiscard = discardPick === c.id;
+  // Keep rotation reasonable so corners stay readable
+  const fanMax =
+    fanCountLocal <= 12 ? 58 :
+    fanCountLocal <= 18 ? 64 :
+    68;
 
-const t = fanCountLocal <= 1 ? 0.5 : idx / (fanCountLocal - 1);
-const rot = (t - 0.5) * 2 * fanMax;
+  const yLift = 28;
 
-// wrapper (tap lane) center position
-let hitX = (t - 0.5) * xSpread;
+  // Reduce “drop” on big hands
+  const dropFactor =
+    fanCountLocal <= 12 ? 0.36 :
+    fanCountLocal <= 18 ? 0.30 :
+    0.22;
 
-// ✅ nudge edge lanes outward so the outer edge is clickable
-if (idx === 0) hitX -= 10;                       // optional left edge
-if (idx === fanCountLocal - 1) hitX += 20;       // right edge fix
+  return (
+    <motion.div
+      variants={handVariants}
+      initial="hidden"
+      animate="show"
+      style={{ ...styles.handFanDock, position: "relative" }}
+    >
+      <AnimatePresence initial={false}>
+        {sortedHand.map((c, idx) => {
+          const isRunSelected = selected.includes(c.id);
+          const isDiscard = discardPick === c.id;
 
-// ✅ compute step FIRST (so we can build a lane width that never overlaps)
-const stepLocal = fanCountLocal <= 1 ? handCardSize.width : xSpread / (fanCountLocal - 1);
+          const t = fanCountLocal <= 1 ? 0.5 : idx / (fanCountLocal - 1);
+          const rot = (t - 0.5) * 2 * fanMax;
 
-// base lane width for accuracy (middle cards)
-const baseLaneW = Math.max(18, Math.min(handCardSize.width, stepLocal * 0.92));
+          // Center position across the fan
+          const hitX = (t - 0.5) * xSpread;
 
-// ✅ widen edges (first/last cards) so outside-edge taps register
-const isEdge = idx === 0 || idx === fanCountLocal - 1;
-const hitWLocal = isEdge ? handCardSize.width : baseLaneW;
+          // Visual arc only
+          const drop = Math.abs(rot) * dropFactor;
+          const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
 
-// vertical tap height (helps bottom taps)
-const hitHLocal = handCardSize.height + 90;
+          // Tap lanes never overlap
+          const stepLocal = fanCountLocal <= 1 ? handCardSize.width : xSpread / (fanCountLocal - 1);
 
-// visual arc only (does NOT affect tap lanes)
-const drop = Math.abs(rot) * dropFactor;
-const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
+          let laneW = Math.max(20, Math.min(handCardSize.width, stepLocal * 0.92));
 
-    return (
-      <div
-        key={c.id}
-        onPointerDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleCard(c.id);
-        }}
-        style={{
-          position: "absolute",
-          left: "50%",
-          bottom: 0,
-          transform: `translateX(calc(-50% + ${hitX}px))`,
-          width: hitWLocal,               // ✅ non-overlapping tap lane
-          height: hitHLocal,              // ✅ easier bottom taps
-          zIndex: 1000 + idx,             // ✅ KEEP STABLE (prevents overlap/steal)
-          pointerEvents: "auto",
-          touchAction: "none"
-        }}
-      >
-        <motion.div
-          variants={cardVariants}
-          style={{
-            ...styles.card,
-            ...handCardSize,
-            position: "absolute",
-            left: "50%",
-            bottom: 0,
-            transform: "translateX(-50%)",
-            padding: 6,
-            rotate: rot,
-            y: visualY,
-            transformOrigin: "50% 95%",
-            background: cardFaceBg(c),
-            border: isDiscard
-              ? "2px solid #ff4d4d"
-              : isRunSelected
-              ? "2px solid rgba(255,255,255,0.78)"
-              : "1px solid rgba(0,0,0,0.22)",
-            pointerEvents: "none"          // ✅ wrapper owns the tap
-          }}
-        >
-          {/* top-left pip */}
-          <div
-            style={{
-              position: "absolute",
-              top: 6,
-              left: 6,
-              display: "flex",
-              flexDirection: "column",
-              lineHeight: 1,
-              fontWeight: 950,
-              fontSize: 12,
-              color: suitColor(c.suit)
-            }}
-          >
-            <span>{c.value}</span>
-            <span style={{ marginTop: 2 }}>{c.suit}</span>
-          </div>
+          // Edge boost (easier edge taps)
+          const edgeBoost = Math.abs(t - 0.5) * 2; // 0 center → 1 edges
+          laneW += edgeBoost * 10;
 
-          {/* center suit watermark */}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: "grid",
-              placeItems: "center",
-              fontSize: 18,
-              fontWeight: 900,
-              opacity: 0.18,
-              color: suitColor(c.suit),
-              pointerEvents: "none"
-            }}
-          >
-            {c.suit}
-          </div>
+          const laneH = handCardSize.height + 110;
 
-          {/* bottom-right pip */}
-          <div
-            style={{
-              position: "absolute",
-              bottom: 6,
-              right: 6,
-              display: "flex",
-              flexDirection: "column",
-              lineHeight: 1,
-              fontWeight: 950,
-              fontSize: 12,
-              color: suitColor(c.suit),
-              transform: "rotate(180deg)"
-            }}
-          >
-            <span>{c.value}</span>
-            <span style={{ marginTop: 2 }}>{c.suit}</span>
-          </div>
-        </motion.div>
-      </div>
-    );
-  });
-})()}      </AnimatePresence>
-      </motion.div>
+          // Stable stacking order only (never change on selection)
+          const z = 1000 + idx;
+
+          return (
+            <div
+              key={c.id}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleCard(c.id);
+              }}
+              style={{
+                position: "absolute",
+                left: "50%",
+                bottom: 0,
+                transform: `translateX(calc(-50% + ${hitX}px))`,
+                width: laneW,
+                height: laneH,
+                zIndex: z,
+                pointerEvents: "auto",
+                touchAction: "none"
+              }}
+            >
+              <motion.div
+                variants={cardVariants}
+                style={{
+                  ...styles.card,
+                  ...handCardSize,
+                  position: "absolute",
+                  left: "50%",
+                  bottom: 0,
+                  transform: "translateX(-50%)",
+                  padding: 6,
+                  rotate: rot,
+                  y: visualY,
+                  transformOrigin: "50% 95%",
+                  background: cardFaceBg(c),
+                  border: isDiscard
+                    ? "2px solid #ff4d4d"
+                    : isRunSelected
+                    ? "2px solid rgba(255,255,255,0.78)"
+                    : "1px solid rgba(0,0,0,0.22)",
+                  pointerEvents: "none"
+                }}
+              >
+                {/* top-left pip */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 6,
+                    left: 6,
+                    display: "flex",
+                    flexDirection: "column",
+                    lineHeight: 1,
+                    fontWeight: 950,
+                    fontSize: 12,
+                    color: suitColor(c.suit)
+                  }}
+                >
+                  <span>{c.value}</span>
+                  <span style={{ marginTop: 2 }}>{c.suit}</span>
+                </div>
+
+                {/* center suit watermark */}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "grid",
+                    placeItems: "center",
+                    fontSize: 18,
+                    fontWeight: 900,
+                    opacity: 0.18,
+                    color: suitColor(c.suit),
+                    pointerEvents: "none"
+                  }}
+                >
+                  {c.suit}
+                </div>
+
+                {/* bottom-right pip */}
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 6,
+                    right: 6,
+                    display: "flex",
+                    flexDirection: "column",
+                    lineHeight: 1,
+                    fontWeight: 950,
+                    fontSize: 12,
+                    color: suitColor(c.suit),
+                    transform: "rotate(180deg)"
+                  }}
+                >
+                  <span>{c.value}</span>
+                  <span style={{ marginTop: 2 }}>{c.suit}</span>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })}
+      </AnimatePresence>
+    </motion.div>
+  );
+})()}
     </div>
 
+    {/* TOAST */}
       {toast && <div style={styles.toast}>{toast}</div>}
 
       {/* ACTION BAR */}
