@@ -465,9 +465,8 @@ useEffect(() => {
   if (!game || !me) return;
   if (game.roundOver || game.gameOver) return;
 
-  // only the current turn player should trigger it
-  const isTurnNow = game.players?.[game.turn]?.id === socket.id;
-  if (!isTurnNow) return;
+  const isMyTurnNow = game.players?.[game.turn]?.id === me.id;
+  if (!isMyTurnNow) return;
 
   const handEmpty = (me.hand?.length || 0) === 0;
   if (!handEmpty) return;
@@ -477,9 +476,15 @@ useEffect(() => {
 
   ensureAudio();
   sfx.run();
+
+  // tell server immediately you went out
   socket.emit("playerWentOut", { room: game.room });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [game?.turn, game?.roundOver, game?.gameOver, me?.hand?.length]);
+
+  // optional: clears local UI so it doesn't wait for discard that can't happen
+  setSelected([]);
+  setDiscardPick(null);
+  setTarget(null);
+}, [game?.turn, game?.roundOver, game?.gameOver, me?.id, me?.hand?.length]);
 
 /* ---------- RESET wentOut FLAG WHEN HAND REFILLS ---------- */
 useEffect(() => {
@@ -890,19 +895,28 @@ return (
     const isRunSelected = selected.includes(c.id);
     const isDiscard = discardPick === c.id;
 
-    const t = fanCountLocal <= 1 ? 0.5 : idx / (fanCountLocal - 1);
-    const rot = (t - 0.5) * 2 * fanMax;
+const t = fanCountLocal <= 1 ? 0.5 : idx / (fanCountLocal - 1);
+const rot = (t - 0.5) * 2 * fanMax;
 
-    // wrapper (tap lane) center position
-    const hitX = (t - 0.5) * xSpread;
+// wrapper (tap lane) center position
+const hitX = (t - 0.5) * xSpread;
 
-    // visual arc only (does NOT affect tap lanes)
-    const drop = Math.abs(rot) * dropFactor;
-    const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
-    
-    // widen tap lanes near the edges (fixes edge cards)
-    const edgeBoost = Math.abs(t - 0.5) * 2; // 0 center → 1 edges
-    const widenedW = hitWLocal + edgeBoost * 12;
+// ✅ compute step FIRST (so we can build a lane width that never overlaps)
+const stepLocal = fanCountLocal <= 1 ? handCardSize.width : xSpread / (fanCountLocal - 1);
+
+// base lane width for accuracy (middle cards)
+const baseLaneW = Math.max(18, Math.min(handCardSize.width, stepLocal * 0.92));
+
+// ✅ widen edges (first/last cards) so outside-edge taps register
+const isEdge = idx === 0 || idx === fanCountLocal - 1;
+const hitWLocal = isEdge ? handCardSize.width : baseLaneW;
+
+// vertical tap height (helps bottom taps)
+const hitHLocal = handCardSize.height + 90;
+
+// visual arc only (does NOT affect tap lanes)
+const drop = Math.abs(rot) * dropFactor;
+const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
 
     return (
       <div
