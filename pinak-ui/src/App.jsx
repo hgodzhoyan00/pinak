@@ -412,6 +412,35 @@ const canAddToRun  = canAct && isMyTurn && hasDrawnThisTurn && !!target && selec
 
   const canContinueRound = !!game && !!me && game.roundOver && !game.gameOver;
 
+  const teamSummary = useMemo(() => {
+  if (!game?.teamMode) return null;
+
+  // Prefer server-provided teams object if you add it later
+  if (game.teams?.[0] && game.teams?.[1]) {
+    return {
+      0: { label: game.teams[0].label || "?", score: game.teams[0].score ?? 0 },
+      1: { label: game.teams[1].label || "?", score: game.teams[1].score ?? 0 }
+    };
+  }
+
+  // Fallback: compute on client from players
+  const initial = (name) => (String(name || "").trim()[0] || "?").toUpperCase();
+
+  const t0 = (game.players || []).filter((p) => p.team === 0);
+  const t1 = (game.players || []).filter((p) => p.team === 1);
+
+  return {
+    0: {
+      label: t0.map((p) => initial(p.name)).join("") || "?",
+      score: t0.reduce((s, p) => s + (p.score ?? 0), 0)
+    },
+    1: {
+      label: t1.map((p) => initial(p.name)).join("") || "?",
+      score: t1.reduce((s, p) => s + (p.score ?? 0), 0)
+    }
+  };
+}, [game]);
+
   /* ---------- SORTED HAND ---------- */
   const sortedHand = useMemo(() => {
     if (!me?.hand) return [];
@@ -707,57 +736,75 @@ return (
       </div>
 
       <div style={styles.rowMid}>
-        {/* LEFT */}
-        <div style={styles.midSide}>
-          <Seat
-            pos="left"
-            player={pLeft}
-            isMe={false}
-            isTurn={game.players[game.turn]?.id === pLeft?.id}
-            target={target}
-            setTarget={setTarget}
-            sfxClick={sfx.click}
-            compact={true}
-            hideHeader={true}
-          />
+{/* LEFT */}
+<div style={styles.midSide}>
+  <Seat
+    pos="left"
+    player={pLeft}
+    isMe={false}
+    isTurn={game.players[game.turn]?.id === pLeft?.id}
+    target={target}
+    setTarget={setTarget}
+    sfxClick={sfx.click}
+    compact={true}
+    hideHeader={true}
+  />
 
-          <div style={styles.runsRail}>
-            {game.players
-            .filter((p) => p.openedSets?.length)
-              .map((p) => (
-                <div key={p.id} style={styles.runsRailBlock}>
-                  <div style={styles.runsRailNameRow}>
-                    <span style={styles.runsRailNameText}>{p.name}{p.id === me.id ? " (You)" : ""}</span>
-                    <span style={styles.runsRailScore}>{p.score ?? 0}</span>
-                  </div>
+  <div style={styles.runsRail}>
+    {/* TEAM MODE HEADER (one line at top) */}
+    {game.teamMode && teamSummary && (
+      <div style={styles.runsRailTeamHeader}>
+        <span style={styles.runsRailTeamSide}>
+          <span style={styles.runsRailTeamLabel}>{teamSummary[0].label}</span>
+          <span style={styles.runsRailTeamScorePill}>{teamSummary[0].score}</span>
+        </span>
 
-                  {p.openedSets?.length ? (
-                    <div style={styles.runsRailSets}>
-                      {p.openedSets.map((set, i) => {
-                        const isTarget = target?.playerId === p.id && target?.runIndex === i;
-                        return (
-                          <div
-                            key={i}
-                            onClick={() => {
-                              sfx.click();
-                              setTarget({ playerId: p.id, runIndex: i });
-                            }}
-                            style={{ cursor: "pointer", touchAction: "manipulation" }}
-                            title="Tap to target this run"
-                          >
-                            <FanSet set={set} isTarget={isTarget} />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div style={styles.runsRailEmpty}>—</div>
-                  )}
+        <span style={styles.runsRailTeamDivider}>—</span>
+
+        <span style={{ ...styles.runsRailTeamSide, justifyContent: "flex-end" }}>
+          <span style={styles.runsRailTeamScorePill}>{teamSummary[1].score}</span>
+          <span style={styles.runsRailTeamLabel}>{teamSummary[1].label}</span>
+        </span>
+      </div>
+    )}
+
+    {/* PLAYER BLOCKS (only show runs) */}
+    {game.players
+      .filter((p) => game.teamMode ? p.openedSets?.length : true)
+      .map((p) => (
+        <div key={p.id} style={styles.runsRailBlock}>
+          <div style={styles.runsRailNameRow}>
+            <span style={styles.runsRailNameText}>
+              {p.name}
+              {p.id === me.id ? " (You)" : ""}
+            </span>
+
+            {/* INDIVIDUAL MODE ONLY: show score next to name */}
+            {!game.teamMode && <span style={styles.runsRailScore}>{p.score ?? 0}</span>}
+          </div>
+
+          <div style={styles.runsRailSets}>
+            {p.openedSets.map((set, i) => {
+              const isTarget = target?.playerId === p.id && target?.runIndex === i;
+              return (
+                <div
+                  key={i}
+                  onClick={() => {
+                    sfx.click();
+                    setTarget({ playerId: p.id, runIndex: i });
+                  }}
+                  style={{ cursor: "pointer", touchAction: "manipulation" }}
+                  title="Tap to target this run"
+                >
+                  <FanSet set={set} isTarget={isTarget} />
                 </div>
-              ))}
+              );
+            })}
           </div>
         </div>
-
+      ))}
+  </div>
+</div>
         {/* CENTER */}
         <div style={styles.midCenter}>
           <div style={styles.center}>
@@ -1728,11 +1775,57 @@ fanStack: {
   position: "relative",
   height: 60,
   overflow: "visible"
+
 },
 fanStackCompact: {
   position: "relative",
   height: 56,
   overflow: "visible"
+},
+
+runsRailTeamHeader: {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+  padding: "8px 10px",
+  marginBottom: 10,
+  borderRadius: 14,
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.10)"
+},
+
+runsRailTeamSide: {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  minWidth: 0,
+  flex: 1
+},
+
+runsRailTeamLabel: {
+  fontWeight: 950,
+  fontSize: 12,
+  letterSpacing: 0.5,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  opacity: 0.95
+},
+
+runsRailTeamScorePill: {
+  flex: "0 0 auto",
+  fontWeight: 950,
+  fontSize: 12,
+  padding: "4px 8px",
+  borderRadius: 999,
+  background: "rgba(0,0,0,0.28)",
+  border: "1px solid rgba(255,255,255,0.14)"
+},
+
+runsRailTeamDivider: {
+  fontWeight: 950,
+  opacity: 0.65
 },
 
 };

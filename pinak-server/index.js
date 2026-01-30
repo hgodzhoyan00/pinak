@@ -43,6 +43,39 @@ function maskHand(hand) {
   return hand.map(() => ({ value: "?", suit: "?" }));
 }
 
+function initialFor(name) {
+  const s = String(name || "").trim();
+  return s ? s[0].toUpperCase() : "?";
+}
+
+/**
+ * Builds g.teams for client display and ensures g.teamScores exists.
+ * - label: concatenated initials of teammates (join order)
+ * - score: team score
+ * - members: player ids
+ */
+function syncTeams(g) {
+  if (!g || !g.teamMode) return;
+
+  if (!g.teamScores) g.teamScores = { 0: 0, 1: 0 };
+
+  const t0Players = g.players.filter((p) => p.team === 0);
+  const t1Players = g.players.filter((p) => p.team === 1);
+
+  const label0 = t0Players.map((p) => initialFor(p.name)).join("") || "T0";
+  const label1 = t1Players.map((p) => initialFor(p.name)).join("") || "T1";
+
+  g.teams = {
+    0: { label: label0, score: g.teamScores[0] || 0, members: t0Players.map((p) => p.id) },
+    1: { label: label1, score: g.teamScores[1] || 0, members: t1Players.map((p) => p.id) }
+  };
+
+  // compatibility: set each player's score to their team's score (so UI doesn't break)
+  g.players.forEach((p) => {
+    if (p.team === 0 || p.team === 1) p.score = g.teamScores[p.team] || 0;
+  });
+}
+
 /* ---------- RUN VALIDATION ---------- */
 
 function validRun(cards) {
@@ -118,6 +151,8 @@ io.on("connection", (socket) => {
     games[room] = {
       room,
       teamMode: !!teamMode,
+      teamScores: !!teamMode ? { 0: 0, 1: 0 } : null,
+      teams: !!teamMode ? { 0: { label: "", score: 0, members: [] }, 1: { label: "", score: 0, members: [] } } : null,
       players: [
         {
           id: socket.id,
@@ -208,40 +243,41 @@ io.on("connection", (socket) => {
   /* ---------- DISCARD ---------- */
 
   socket.on("discard", ({ room, index }) => {
-  const g = games[room];
-  const p = g?.players?.[g.turn];
-  if (!g || !p || p.id !== socket.id) return;
-  if (g.roundOver || g.gameOver) return;
-  if (!p.canDiscard) return; // must draw before discard
-  if (index == null || index < 0 || index >= p.hand.length) return;
+    const g = games[room];
+    const p = g?.players?.[g.turn];
+    if (!g || !p || p.id !== socket.id) return;
+    if (g.roundOver || g.gameOver) return;
+    if (!p.canDiscard) return; // must draw before discard
+    if (index == null || index < 0 || index >= p.hand.length) return;
 
-  // move card to open stack
-  g.open.push(p.hand.splice(index, 1)[0]);
+    // move card to open stack
+    g.open.push(p.hand.splice(index, 1)[0]);
 
-  // discard completes discard requirement
-  p.mustDiscard = false;
+    // discard completes discard requirement
+    p.mustDiscard = false;
 
-  // ✅ if you discarded your last card, you are OUT immediately
-  if (p.hand.length === 0) {
-    g.roundOver = true;
-    g.winner = p.id;
+    // ✅ if you discarded your last card, you are OUT immediately
+    if (p.hand.length === 0) {
+      g.roundOver = true;
+      g.winner = p.id;
 
-    scoreRound(g);
-    checkWin(g);
+      scoreRound(g);
+      checkWin(g);
 
-    // lock turn state for clarity
+      // lock turn state for clarity
+      p.canDiscard = false;
+
+      emit(room);
+      return;
+    }
+
+    // normal discard ends turn
     p.canDiscard = false;
+    g.turn = (g.turn + 1) % g.players.length;
 
     emit(room);
-    return;
-  }
+  });
 
-  // normal discard ends turn
-  p.canDiscard = false;
-  g.turn = (g.turn + 1) % g.players.length;
-
-  emit(room);
-});
   socket.on("endTurn", ({ room }) => {
     const g = games[room];
     const p = g?.players?.[g.turn];
@@ -370,6 +406,7 @@ io.on("connection", (socket) => {
       p.opened = false;
       p.mustDiscard = false;
       p.canDiscard = false;
+      // scores persist (team or individual)
     });
 
     g.roundOver = false;
@@ -383,42 +420,70 @@ io.on("connection", (socket) => {
 
 /* ---------- SCORING ---------- */
 /*
-RULES IMPLEMENTED (per your message):
-- Winner score gain = (points in opened sets) + 10 bonus
-- Other players score gain/loss = (opened sets points) - (hand points)
-- Double penalty: only applies to the player who never opened any sets:
-    net = (openedPts - handPts) * 2  (openedPts will be 0 if never opened)
-- Winner does NOT get any penalty
+RULES IMPLEMENTED:
+- Winner gain = opened sets points + 10 bonus
+- Others net = opened sets points - hand points
+- Double penalty for a player who never opened: net *= 2
+- In teamMode: compute the same per-player deltas, but apply them to TEAM totals.
 */
 function scoreRound(g) {
   const openedPts = (p) => p.openedSets.flat().reduce((s, c) => s + (c.points || 0), 0);
   const handPts = (p) => p.hand.reduce((s, c) => s + (c.points || 0), 0);
 
+  // INDIVIDUAL MODE (unchanged)
+  if (!g.teamMode) {
+    g.players.forEach((p) => {
+      if (p.id === g.winner) {
+        const gain = openedPts(p) + 10;
+        p.score += gain;
+        return;
+      }
+
+      let net = openedPts(p) - handPts(p);
+      if (!p.opened) net *= 2;
+      p.score += net;
+    });
+    return;
+  }
+
+  // TEAM MODE
+  if (!g.teamScores) g.teamScores = { 0: 0, 1: 0 };
+
+  const teamDelta = { 0: 0, 1: 0 };
+
   g.players.forEach((p) => {
+    const team = p.team;
+    if (team !== 0 && team !== 1) return;
+
     if (p.id === g.winner) {
       const gain = openedPts(p) + 10;
-      p.score += gain;
+      teamDelta[team] += gain;
       return;
     }
 
     let net = openedPts(p) - handPts(p);
-
-    // double penalty only for this player if they never opened
     if (!p.opened) net *= 2;
+    teamDelta[team] += net;
+  });
 
-    p.score += net;
+  g.teamScores[0] = (g.teamScores[0] || 0) + teamDelta[0];
+  g.teamScores[1] = (g.teamScores[1] || 0) + teamDelta[1];
+
+  // mirror team score onto each player for compatibility with current UI
+  g.players.forEach((p) => {
+    if (p.team === 0 || p.team === 1) p.score = g.teamScores[p.team] || 0;
   });
 }
 
 function checkWin(g) {
   if (!g.teamMode) {
     if (g.players.some((p) => p.score >= WIN_SCORE)) g.gameOver = true;
-  } else {
-    const teamScores = {};
-    g.players.forEach((p) => {
-      teamScores[p.team] = (teamScores[p.team] || 0) + p.score;
-    });
-    if (Object.values(teamScores).some((s) => s >= WIN_SCORE)) g.gameOver = true;
+    return;
+  }
+
+  if (!g.teamScores) g.teamScores = { 0: 0, 1: 0 };
+  if ((g.teamScores[0] || 0) >= WIN_SCORE || (g.teamScores[1] || 0) >= WIN_SCORE) {
+    g.gameOver = true;
   }
 }
 
@@ -427,6 +492,9 @@ function checkWin(g) {
 function emit(room) {
   const g = games[room];
   if (!g) return;
+
+  // ensure g.teams is always up to date in team mode
+  syncTeams(g);
 
   g.players.forEach((p) => {
     io.to(p.id).emit("gameState", {
