@@ -592,6 +592,20 @@ useEffect(() => {
     socket.emit(eventName, payload);
   }
 
+  function leaveToLobby() {
+  // prevent auto-reconnect into the same room
+  localStorage.removeItem("pinak_room");
+
+  // reset UI state
+  setGame(null);
+  setSelected([]);
+  setDiscardPick(null);
+  setTarget(null);
+  setOpenCount(0);
+  setError("");
+  setToast("");
+}
+
   /* ---------- CONNECTION ---------- */
   if (!connected) return <h2 style={{ padding: 20, color: "#eaf2ff" }}>Connecting…</h2>;
 
@@ -753,12 +767,26 @@ return (
       <div style={styles.bannerNeutral}>
         <div>{game.gameOver ? "🏁 Game Over" : "✅ Round Over"}</div>
 
-        {game.roundOver && !game.gameOver && (
-          <button style={{ ...styles.primaryBtn, marginTop: 10 }} onClick={continueNextRound}>
-            ▶️ Start Next Round
-          </button>
-        )}
-      </div>
+<div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 10 }}>
+  {game.roundOver && !game.gameOver && (
+    <button style={styles.primaryBtn} onClick={continueNextRound}>
+      ▶️ Start Next Round
+    </button>
+  )}
+
+  <button
+    style={styles.secondaryBtn}
+    onClick={() => {
+      ensureAudio();
+      sfx.click();
+      leaveToLobby();
+    }}
+    title="Back to Lobby"
+  >
+    ⬅ Back to Lobby
+  </button>
+ </div>     
+</div>
     )}
 
     {/* TABLE AREA */}
