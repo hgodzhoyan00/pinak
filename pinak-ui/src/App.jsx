@@ -934,9 +934,9 @@ return (
 
           // Edge boost (easier edge taps)
           const edgeBoost = Math.abs(t - 0.5) * 2; // 0 center → 1 edges
-          laneW = Math.min(handCardSize.width + 10, laneW + edgeBoost * 14);
+          laneW = Math.min(handCardSize.width + 18, laneW + edgeBoost * 20);
 
-          const laneH = handCardSize.height + 110;
+          const laneH = handCardSize.height + 34;
 
           // Stable stacking order only (never change on selection)
           const z = 1000 + idx;
@@ -1582,7 +1582,8 @@ const styles = {
     height: 240,                    // ✅ room for big hitboxes
     margin: "0 auto",
     overflow: "visible",
-    pointerEvents: "auto"  
+    pointerEvents: "auto",  
+    paddingTop: 40
 },
 
   centerDrawRowCompact: {
