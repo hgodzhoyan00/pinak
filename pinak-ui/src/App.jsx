@@ -841,6 +841,39 @@ return (
       {/* bottom row exists but you can leave it empty */}
       
     </div>
+    {/* RUNS RAIL (shows all players' opened sets) */}
+<div style={styles.runsRail}>
+  {game.players.map((p) => (
+    <div key={p.id} style={styles.runsRailBlock}>
+      <div style={styles.runsRailName}>
+        {p.name}
+        {p.id === me.id ? " (You)" : ""}
+      </div>
+
+      {p.openedSets?.length ? (
+        <div style={styles.runsRailSets}>
+          {p.openedSets.map((set, i) => {
+            const isTarget = target?.playerId === p.id && target?.runIndex === i;
+            return (
+              <div
+                key={i}
+                onClick={() => {
+                  sfx.click();
+                  setTarget({ playerId: p.id, runIndex: i });
+                }}
+                style={{ cursor: "pointer", touchAction: "manipulation" }}
+              >
+                <FanSet set={set} isTarget={isTarget} />
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={styles.runsRailEmpty}>—</div>
+      )}
+    </div>
+  ))}
+</div>
 
     {/* HAND DOCK (outside tableArea so it never stretches center) */}
     <div style={styles.handDock}>
