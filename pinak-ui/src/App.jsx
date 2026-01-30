@@ -723,7 +723,7 @@ return (
 
           <div style={styles.runsRail}>
             {game.players
-              .filter((p) => p.id !== me.id)
+            .filter((p) => p.openedSets?.length)
               .map((p) => (
                 <div key={p.id} style={styles.runsRailBlock}>
                   <div style={styles.runsRailNameRow}>
@@ -841,39 +841,6 @@ return (
       {/* bottom row exists but you can leave it empty */}
       
     </div>
-    {/* RUNS RAIL (shows all players' opened sets) */}
-<div style={styles.runsRail}>
-  {game.players.map((p) => (
-    <div key={p.id} style={styles.runsRailBlock}>
-      <div style={styles.runsRailName}>
-        {p.name}
-        {p.id === me.id ? " (You)" : ""}
-      </div>
-
-      {p.openedSets?.length ? (
-        <div style={styles.runsRailSets}>
-          {p.openedSets.map((set, i) => {
-            const isTarget = target?.playerId === p.id && target?.runIndex === i;
-            return (
-              <div
-                key={i}
-                onClick={() => {
-                  sfx.click();
-                  setTarget({ playerId: p.id, runIndex: i });
-                }}
-                style={{ cursor: "pointer", touchAction: "manipulation" }}
-              >
-                <FanSet set={set} isTarget={isTarget} />
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div style={styles.runsRailEmpty}>—</div>
-      )}
-    </div>
-  ))}
-</div>
 
     {/* HAND DOCK (outside tableArea so it never stretches center) */}
     <div style={styles.handDock}>
@@ -883,28 +850,24 @@ return (
       </div>
 
 {(() => {
-  const fanCountLocal = sortedHand.length || 1;
+const fanCountLocal = sortedHand.length || 1;
 
-  // Wider fan when the hand is huge
-  const spreadTotal =
-    fanCountLocal <= 12 ? 320 :
-    fanCountLocal <= 18 ? 440 :
-    560;
+// Smooth scaling: tight for small hands, wide for huge hands
+const spreadTotal = Math.min(
+  620,
+  Math.max(180, 120 + fanCountLocal * 22) // 5 cards ~230, 12 cards ~384, 23 cards ~626 (clamped)
+);
 
-  // Keep rotation reasonable so corners stay readable
-  const fanMax =
-    fanCountLocal <= 12 ? 58 :
-    fanCountLocal <= 18 ? 64 :
-    68;
+// Rotation: gentle for small hands, stronger as hand grows
+const fanMax = Math.min(
+  70,
+  Math.max(28, 18 + fanCountLocal * 2.0) // 5 cards ~28, 12 cards ~42, 23 cards ~64
+);
 
-  const yLift = 28;
+const yLift = 28;
 
-  // Reduce “drop” on big hands
-  const dropFactor =
-    fanCountLocal <= 12 ? 0.36 :
-    fanCountLocal <= 18 ? 0.30 :
-    0.22;
-
+// Drop: reduce droop for big hands so edges don't sink too far
+const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.20;
   return (
     <motion.div
       variants={handVariants}

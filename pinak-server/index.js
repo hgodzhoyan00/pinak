@@ -208,23 +208,40 @@ io.on("connection", (socket) => {
   /* ---------- DISCARD ---------- */
 
   socket.on("discard", ({ room, index }) => {
-    const g = games[room];
-    const p = g?.players?.[g.turn];
-    if (!g || !p || p.id !== socket.id) return;
-    if (g.roundOver || g.gameOver) return;
-    if (!p.canDiscard) return; // must draw before discard
-    if (index == null || index < 0 || index >= p.hand.length) return;
+  const g = games[room];
+  const p = g?.players?.[g.turn];
+  if (!g || !p || p.id !== socket.id) return;
+  if (g.roundOver || g.gameOver) return;
+  if (!p.canDiscard) return; // must draw before discard
+  if (index == null || index < 0 || index >= p.hand.length) return;
 
-    g.open.push(p.hand.splice(index, 1)[0]);
+  // move card to open stack
+  g.open.push(p.hand.splice(index, 1)[0]);
 
-    // discard ends turn
-    p.mustDiscard = false;
+  // discard completes discard requirement
+  p.mustDiscard = false;
+
+  // ✅ if you discarded your last card, you are OUT immediately
+  if (p.hand.length === 0) {
+    g.roundOver = true;
+    g.winner = p.id;
+
+    scoreRound(g);
+    checkWin(g);
+
+    // lock turn state for clarity
     p.canDiscard = false;
-    g.turn = (g.turn + 1) % g.players.length;
 
     emit(room);
-  });
+    return;
+  }
 
+  // normal discard ends turn
+  p.canDiscard = false;
+  g.turn = (g.turn + 1) % g.players.length;
+
+  emit(room);
+});
   socket.on("endTurn", ({ room }) => {
     const g = games[room];
     const p = g?.players?.[g.turn];
