@@ -743,24 +743,36 @@ return (
         )}
       </div>
 
-      <div style={styles.topBarRight}>
-        <div style={{ textAlign: "right" }}>
-          <div style={styles.miniLabel}>Turn</div>
-          <div style={styles.title}>{isMyTurn ? "You" : game.players[game.turn]?.name}</div>
-        </div>
+<div style={styles.topBarRight}>
+  <div style={{ textAlign: "right" }}>
+    <div style={styles.miniLabel}>Turn</div>
+    <div style={styles.title}>{isMyTurn ? "You" : game.players[game.turn]?.name}</div>
+  </div>
 
-        <button
-          style={styles.soundBtn}
-          onClick={() => {
-            ensureAudio();
-            setSoundOn((v) => !v);
-          }}
-          title="Sound"
-        >
-          {soundOn ? "🔊" : "🔇"}
-        </button>
-      </div>
-    </div>
+  <button
+    style={styles.leaveBtn}
+    onClick={() => {
+      ensureAudio();
+      sfx.click();
+      leaveToLobby();
+    }}
+    title="Back to Lobby"
+  >
+    ⬅
+  </button>
+
+  <button
+    style={styles.soundBtn}
+    onClick={() => {
+      ensureAudio();
+      setSoundOn((v) => !v);
+    }}
+    title="Sound"
+  >
+    {soundOn ? "🔊" : "🔇"}
+  </button>
+</div>    
+</div>
 
     {/* BANNER */}
     {(game.gameOver || game.roundOver) && (
@@ -1896,6 +1908,19 @@ runsRailTeamScorePill: {
 runsRailTeamDivider: {
   fontWeight: 950,
   opacity: 0.65
+},
+
+leaveBtn: {
+  width: 44,
+  height: 44,
+  borderRadius: 12,
+  border: "1px solid rgba(255,255,255,0.18)",
+  background: "rgba(0,0,0,0.28)",
+  color: "#fff",
+  fontWeight: 950,
+  fontSize: 18,
+  cursor: "pointer",
+  touchAction: "manipulation"
 },
 
 };
