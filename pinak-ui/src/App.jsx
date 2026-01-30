@@ -402,8 +402,10 @@ export default function App() {
   const canDraw = canAct && isMyTurn && !me.mustDiscard && !me.canDiscard;
   const canSelectOpen = canDraw;
 
-  const canCreateRun = canAct && isMyTurn && selected.length >= 3;
-  const canAddToRun = canAct && isMyTurn && !!target && selected.length >= 1;
+const hasDrawnThisTurn = !!me?.canDiscard; // server sets canDiscard=true after ANY draw
+
+const canCreateRun = canAct && isMyTurn && hasDrawnThisTurn && selected.length >= 3;
+const canAddToRun  = canAct && isMyTurn && hasDrawnThisTurn && !!target && selected.length >= 1;
 
   const canDiscard = canAct && isMyTurn && !!discardPick && (me.mustDiscard || me.canDiscard);
   const canEndTurn = canAct && isMyTurn && !me.mustDiscard;
@@ -884,10 +886,10 @@ return (
   const fanCountLocal = sortedHand.length || 1;
 
   // Wider fan when the hand is huge
-  const xSpread =
-    fanCountLocal <= 12 ? 150 :
-    fanCountLocal <= 18 ? 210 :
-    280;
+  const spreadTotal =
+    fanCountLocal <= 12 ? 320 :
+    fanCountLocal <= 18 ? 440 :
+    560;
 
   // Keep rotation reasonable so corners stay readable
   const fanMax =
@@ -919,20 +921,20 @@ return (
           const rot = (t - 0.5) * 2 * fanMax;
 
           // Center position across the fan
-          const hitX = (t - 0.5) * xSpread;
+          const hitX = (t - 0.5) * spreadTotal;
 
           // Visual arc only
           const drop = Math.abs(rot) * dropFactor;
           const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
 
           // Tap lanes never overlap
-          const stepLocal = fanCountLocal <= 1 ? handCardSize.width : xSpread / (fanCountLocal - 1);
+          const stepLocal = fanCountLocal <= 1 ? handCardSize.width : spreadTotal / (fanCountLocal - 1);
 
-          let laneW = Math.max(20, Math.min(handCardSize.width, stepLocal * 0.92));
+          let laneW = Math.max(26, Math.min(handCardSize.width, stepLocal * 0.98));
 
           // Edge boost (easier edge taps)
           const edgeBoost = Math.abs(t - 0.5) * 2; // 0 center → 1 edges
-          laneW += edgeBoost * 10;
+          laneW = Math.min(handCardSize.width + 10, laneW + edgeBoost * 14);
 
           const laneH = handCardSize.height + 110;
 
@@ -1580,7 +1582,7 @@ const styles = {
     height: 240,                    // ✅ room for big hitboxes
     margin: "0 auto",
     overflow: "visible",
-    pointerEvents: "none"  
+    pointerEvents: "auto"  
 },
 
   centerDrawRowCompact: {
