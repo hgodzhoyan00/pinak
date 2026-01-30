@@ -899,7 +899,11 @@ const t = fanCountLocal <= 1 ? 0.5 : idx / (fanCountLocal - 1);
 const rot = (t - 0.5) * 2 * fanMax;
 
 // wrapper (tap lane) center position
-const hitX = (t - 0.5) * xSpread;
+let hitX = (t - 0.5) * xSpread;
+
+// ✅ nudge edge lanes outward so the outer edge is clickable
+if (idx === 0) hitX -= 10;                       // optional left edge
+if (idx === fanCountLocal - 1) hitX += 16;       // right edge fix
 
 // ✅ compute step FIRST (so we can build a lane width that never overlaps)
 const stepLocal = fanCountLocal <= 1 ? handCardSize.width : xSpread / (fanCountLocal - 1);
