@@ -460,13 +460,11 @@ export default function App() {
     }
   }, [me, canAct, isMyTurn, selected, discardPick]);
 
-  /* ---------- AUTO END ROUND (no button) ---------- */
+  /* ---------- /* ---------- AUTO END ROUND (force even if mustDiscard) ---------- */
 useEffect(() => {
   if (!game || !me) return;
+  if (!isMyTurn) return;
   if (game.roundOver || game.gameOver) return;
-
-  const isMyTurnNow = game.players?.[game.turn]?.id === me.id;
-  if (!isMyTurnNow) return;
 
   const handEmpty = (me.hand?.length || 0) === 0;
   if (!handEmpty) return;
@@ -474,17 +472,24 @@ useEffect(() => {
   if (wentOutSentRef.current) return;
   wentOutSentRef.current = true;
 
-  ensureAudio();
-  sfx.run();
-
-  // tell server immediately you went out
-  socket.emit("playerWentOut", { room: game.room });
-
-  // optional: clears local UI so it doesn't wait for discard that can't happen
+  // clear local UI state so client doesn't keep "requiring" discard
   setSelected([]);
   setDiscardPick(null);
   setTarget(null);
-}, [game?.turn, game?.roundOver, game?.gameOver, me?.id, me?.hand?.length]);
+
+  ensureAudio();
+  sfx.run();
+
+  // tell server we went out
+  safeEmit("playerWentOut", { room: game.room });
+
+  // ✅ important: some servers still wait for "endTurn" after a draw->discard cycle.
+  // Sending endTurn after wentOut prevents getting stuck in "must discard" state.
+  window.setTimeout(() => {
+    safeEmit("endTurn", { room: game.room });
+  }, 120);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [game, me, isMyTurn]);
 
 /* ---------- RESET wentOut FLAG WHEN HAND REFILLS ---------- */
 useEffect(() => {
