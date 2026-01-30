@@ -313,8 +313,16 @@ io.on("connection", (socket) => {
     const pTurn = g?.players?.[g.turn];
     if (!g || !pTurn || pTurn.id !== socket.id) return; // ✅ must be current turn player
     if (g.roundOver || g.gameOver) return;
-    if (pTurn.hand.length) return; // must have 0 cards
-    if (pTurn.mustDiscard) return; // ✅ cannot go out while a required discard is pending
+
+    // must have 0 cards
+    if (pTurn.hand.length) return;
+
+    // ✅ MUST have drawn this turn (prevents going out without drawing)
+    if (!pTurn.canDiscard) return;
+
+    // ✅ If hand is empty, discard requirement is irrelevant
+    pTurn.mustDiscard = false;
+    pTurn.canDiscard = false;
 
     g.roundOver = true;
     g.winner = pTurn.id;
