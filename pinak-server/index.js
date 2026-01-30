@@ -141,65 +141,112 @@ const games = {};
 /* ---------- SOCKET ---------- */
 
 io.on("connection", (socket) => {
-  /* ---------- CREATE / JOIN ---------- */
+/* ---------- CREATE / JOIN ---------- */
 
-  socket.on("createRoom", ({ room, name, teamMode }) => {
-    if (!room || !name || games[room]) return;
+socket.on("createRoom", ({ room, name, teamMode, pid }) => {
+  if (!room || !name || games[room]) return;
 
-    const deck = buildDeck();
+  const deck = buildDeck();
 
-    games[room] = {
-      room,
-      teamMode: !!teamMode,
-      teamScores: !!teamMode ? { 0: 0, 1: 0 } : null,
-      teams: !!teamMode ? { 0: { label: "", score: 0, members: [] }, 1: { label: "", score: 0, members: [] } } : null,
-      players: [
-        {
-          id: socket.id,
-          name,
-          team: teamMode ? 0 : null,
-          hand: deck.splice(0, HAND_SIZE),
-          openedSets: [],
-          opened: false,
-          mustDiscard: false,
-          canDiscard: false, // true after ANY draw (open or closed)
-          score: 0
-        }
-      ],
-      closed: deck,
-      open: [deck.pop()],
-      turn: 0,
-      roundOver: false,
-      winner: null,
-      gameOver: false,
-      log: [`${name} created the room`]
-    };
+  const persistentPid = pid || uuid(); // ✅ persistent player identity
+
+  games[room] = {
+    room,
+    teamMode: !!teamMode,
+    teamScores: !!teamMode ? { 0: 0, 1: 0 } : null,
+    teams: !!teamMode
+      ? { 0: { label: "", score: 0, members: [] }, 1: { label: "", score: 0, members: [] } }
+      : null,
+    players: [
+      {
+        id: socket.id,          // ✅ socket connection id (changes on refresh)
+        pid: persistentPid,     // ✅ persistent id (survives refresh)
+        name,
+        team: teamMode ? 0 : null,
+        hand: deck.splice(0, HAND_SIZE),
+        openedSets: [],
+        opened: false,
+        mustDiscard: false,
+        canDiscard: false,
+        score: 0
+      }
+    ],
+    closed: deck,
+    open: [deck.pop()],
+    turn: 0,
+    roundOver: false,
+    winner: null,
+    gameOver: false,
+    log: [`${name} created the room`]
+  };
+
+  socket.join(room);
+
+  // ✅ tell client who they are (store in localStorage)
+  socket.emit("youAre", { pid: persistentPid });
+
+  emit(room);
+});
+
+socket.on("joinRoom", ({ room, name, pid }) => {
+  const g = games[room];
+  if (!g || g.players.length >= 4) return;
+
+  // ✅ if client already has a pid, reuse it. otherwise create one.
+  const persistentPid = pid || uuid();
+
+  // ✅ if this pid already exists in the room, rebind instead of creating a duplicate player
+  const existing = g.players.find((p) => p.pid === persistentPid);
+  if (existing) {
+    existing.id = socket.id;
+    existing.name = name || existing.name;
 
     socket.join(room);
+    socket.emit("youAre", { pid: persistentPid });
     emit(room);
+    return;
+  }
+
+  g.players.push({
+    id: socket.id,
+    pid: persistentPid,
+    name,
+    team: g.teamMode ? g.players.length % 2 : null,
+    hand: g.closed.splice(0, HAND_SIZE),
+    openedSets: [],
+    opened: false,
+    mustDiscard: false,
+    canDiscard: false,
+    score: 0
   });
 
-  socket.on("joinRoom", ({ room, name }) => {
-    const g = games[room];
-    if (!g || g.players.length >= 4) return;
+  socket.join(room);
 
-    g.players.push({
-      id: socket.id,
-      name,
-      team: g.teamMode ? g.players.length % 2 : null,
-      hand: g.closed.splice(0, HAND_SIZE),
-      openedSets: [],
-      opened: false,
-      mustDiscard: false,
-      canDiscard: false,
-      score: 0
-    });
+  // ✅ tell client their pid (store in localStorage)
+  socket.emit("youAre", { pid: persistentPid });
 
-    socket.join(room);
-    g.log.push(`${name} joined the room`);
-    emit(room);
-  });
+  g.log.push(`${name} joined the room`);
+  emit(room);
+});
+/* ---------- RECONNECT (refresh / PWA resume) ---------- */
 
+socket.on("reconnectRoom", ({ room, pid }) => {
+  const g = games[room];
+  if (!g || !pid) return;
+
+  const p = g.players.find((x) => x.pid === pid);
+  if (!p) return;
+
+  // ✅ rebind the existing player to this new socket connection
+  p.id = socket.id;
+
+  socket.join(room);
+
+  // re-confirm identity for client just in case
+  socket.emit("youAre", { pid });
+
+  emit(room);
+});
   /* ---------- DRAW ---------- */
 
   socket.on("drawClosed", ({ room }) => {

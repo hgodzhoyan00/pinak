@@ -340,56 +340,85 @@ export default function App() {
     end: () => beep(420, 55, "sine", 0.03)
   };
 
-  /* ---------- SOCKET ---------- */
-  useEffect(() => {
-    socket.on("connect", () => setConnected(true));
-    socket.on("disconnect", () => setConnected(false));
+/* ---------- SOCKET ---------- */
+const reconnectOnceRef = useRef(false);
 
-    socket.on("gameState", (state) => {
-      setGame(state);
+useEffect(() => {
+  const onConnect = () => setConnected(true);
+  const onDisconnect = () => setConnected(false);
 
-      const meNext = state.players.find((p) => p.id === socket.id);
-      const isMyTurnNext = state.players[state.turn]?.id === socket.id;
+  const onYouAre = ({ pid }) => {
+    if (pid) localStorage.setItem("pinak_pid", pid);
+  };
 
-      const openLen = state.open?.length || 0;
-      setOpenCount((prev) => (prev > openLen ? openLen : prev));
+  const onGameState = (state) => {
+    setGame(state);
 
-      if (!isMyTurnNext) {
-        setSelected([]);
-        setDiscardPick(null);
-        setTarget(null);
-      }
+    const meNext = state.players.find((p) => p.id === socket.id);
+    const isMyTurnNext = state.players[state.turn]?.id === socket.id;
 
-      if (discardPick && !meNext?.hand?.some((c) => c.id === discardPick)) {
-        setDiscardPick(null);
-      }
+    const openLen = state.open?.length || 0;
+    setOpenCount((prev) => (prev > openLen ? openLen : prev));
 
-      if (target) {
-        const owner = state.players.find((p) => p.id === target.playerId);
-        if (!owner || !owner.openedSets?.[target.runIndex]) setTarget(null);
-      }
+    if (!isMyTurnNext) {
+      setSelected([]);
+      setDiscardPick(null);
+      setTarget(null);
+    }
 
-      if (!state.roundOver) wentOutSentRef.current = false;
+    // clean invalid discardPick
+    setDiscardPick((prev) => (prev && !meNext?.hand?.some((c) => c.id === prev) ? null : prev));
+
+    // clean invalid target
+    setTarget((prev) => {
+      if (!prev) return null;
+      const owner = state.players.find((p) => p.id === prev.playerId);
+      if (!owner || !owner.openedSets?.[prev.runIndex]) return null;
+      return prev;
     });
 
-    socket.on("errorMsg", (msg) => {
-      const m = msg || "Action rejected";
-      setError(m);
-      setToast(m);
-      window.clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = window.setTimeout(() => setToast(""), 2200);
-    });
+    if (!state.roundOver) wentOutSentRef.current = false;
+  };
 
-    return () => {
-      socket.off("connect");
-      socket.off("disconnect");
-      socket.off("gameState");
-      socket.off("errorMsg");
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [discardPick, target, soundOn]);
+  const onErrorMsg = (msg) => {
+    const m = msg || "Action rejected";
+    setError(m);
+    setToast(m);
+    window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToast(""), 2200);
+  };
 
-  /* ---------- DERIVED ---------- */
+  socket.on("connect", onConnect);
+  socket.on("disconnect", onDisconnect);
+  socket.on("youAre", onYouAre);
+  socket.on("gameState", onGameState);
+  socket.on("errorMsg", onErrorMsg);
+
+  return () => {
+    socket.off("connect", onConnect);
+    socket.off("disconnect", onDisconnect);
+    socket.off("youAre", onYouAre);
+    socket.off("gameState", onGameState);
+    socket.off("errorMsg", onErrorMsg);
+  };
+  // IMPORTANT: do NOT depend on discardPick/target/soundOn here
+}, []);
+/* ---------- AUTO RECONNECT ---------- */
+useEffect(() => {
+  if (!connected) return;
+  if (reconnectOnceRef.current) return;
+
+  const savedRoom = localStorage.getItem("pinak_room");
+  const pid = localStorage.getItem("pinak_pid");
+
+  // only attempt if we have identity + last room and we're not already in-game
+  if (savedRoom && pid && !game) {
+    reconnectOnceRef.current = true;
+    socket.emit("reconnectRoom", { room: savedRoom, pid });
+  }
+}, [connected, game]);
+
+ /* ---------- DERIVED ---------- */
   const me = useMemo(() => game?.players?.find((p) => p.id === socket.id), [game]);
 
   const isMyTurn = useMemo(() => {
@@ -605,30 +634,43 @@ useEffect(() => {
             </label>
 
             <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
-              <button
-                style={styles.primaryBtn}
-                onClick={() => {
-                  ensureAudio();
-                  sfx.click();
-                  safeEmit("createRoom", { room, name, teamMode });
-                }}
-                disabled={!name || !room}
-              >
-                Create
-              </button>
+<button
+  style={styles.primaryBtn}
+  onClick={() => {
+    ensureAudio();
+    sfx.click();
 
-              <button
-                style={styles.secondaryBtn}
-                onClick={() => {
-                  ensureAudio();
-                  sfx.click();
-                  safeEmit("joinRoom", { room, name });
-                }}
-                disabled={!name || !room}
-              >
-                Join
-              </button>
-            </div>
+    // ✅ remember room for refresh/PWA resume
+    localStorage.setItem("pinak_room", room);
+
+    // ✅ persistent player id (may not exist yet)
+    const pid = localStorage.getItem("pinak_pid");
+
+    safeEmit("createRoom", { room, name, teamMode, pid });
+  }}
+  disabled={!name || !room}
+>
+  Create
+</button>
+
+<button
+  style={styles.secondaryBtn}
+  onClick={() => {
+    ensureAudio();
+    sfx.click();
+
+    // ✅ remember room for refresh/PWA resume
+    localStorage.setItem("pinak_room", room);
+
+    // ✅ persistent player id (may not exist yet)
+    const pid = localStorage.getItem("pinak_pid");
+
+    safeEmit("joinRoom", { room, name, pid });
+  }}
+  disabled={!name || !room}
+>
+  Join
+</button>            </div>
 
             {error && <p style={{ color: "#ff7b7b", marginTop: 10, fontWeight: 900 }}>{error}</p>}
           </div>
