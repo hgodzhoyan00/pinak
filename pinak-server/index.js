@@ -174,12 +174,36 @@ socket.on("createRoom", ({ room, name, teamMode, pid, team }) => {
   if (!room || !name || games[room]) return;
 
   const deck = buildDeck();
+
   const persistentPid = pid || uuid();
 
-  const g = {
+  const isTeam = !!teamMode;
+
+  // ✅ chosen team only matters in team mode
+  let chosenTeam = isTeam ? team : null;
+
+  // ✅ must be 0 or 1 in team mode
+  if (isTeam && (chosenTeam !== 0 && chosenTeam !== 1)) return;
+
+  games[room] = {
     room,
-    teamMode: !!teamMode,
-    players: [],
+    teamMode: isTeam,
+    teamScores: isTeam ? { 0: 0, 1: 0 } : null,
+    teams: isTeam ? { 0: { label: "", score: 0, members: [] }, 1: { label: "", score: 0, members: [] } } : null,
+    players: [
+      {
+        id: socket.id,
+        pid: persistentPid,
+        name,
+        team: isTeam ? chosenTeam : null,
+        hand: deck.splice(0, HAND_SIZE),
+        openedSets: [],
+        opened: false,
+        mustDiscard: false,
+        canDiscard: false,
+        score: 0
+      }
+    ],
     closed: deck,
     open: [deck.pop()],
     turn: 0,
@@ -189,55 +213,22 @@ socket.on("createRoom", ({ room, name, teamMode, pid, team }) => {
     log: [`${name} created the room`]
   };
 
-  // ✅ team picking only if teamMode
-  let teamId = null;
-  if (g.teamMode) {
-    const pick = pickTeamOrReject(g, team);
-    if (!pick.ok) {
-      socket.emit("errorMsg", pick.msg);
-      return;
-    }
-    teamId = pick.team;
-  }
-
-  g.players.push({
-    id: socket.id,
-    pid: persistentPid,
-    name,
-    team: teamId,
-    hand: deck.splice(0, HAND_SIZE),
-    openedSets: [],
-    opened: false,
-    mustDiscard: false,
-    canDiscard: false,
-    score: 0
-  });
-
-  games[room] = g;
-
   socket.join(room);
   socket.emit("youAre", { pid: persistentPid });
-
   emit(room);
 });
 
 socket.on("joinRoom", ({ room, name, pid, team }) => {
   const g = games[room];
-  if (!g) return;
-
-  // max 4 players overall
-  if (g.players.length >= 4) {
-    socket.emit("errorMsg", "Room is full (max 4 players).");
-    return;
-  }
+  if (!g || g.players.length >= 4) return;
 
   const persistentPid = pid || uuid();
 
-  // ✅ If pid already exists, just rebind socket id (refresh/PWA resume)
+  // ✅ rebind existing player (refresh / PWA resume) WITHOUT changing team
   const existing = g.players.find((p) => p.pid === persistentPid);
   if (existing) {
     existing.id = socket.id;
-    if (name) existing.name = name;
+    existing.name = name || existing.name;
 
     socket.join(room);
     socket.emit("youAre", { pid: persistentPid });
@@ -245,22 +236,25 @@ socket.on("joinRoom", ({ room, name, pid, team }) => {
     return;
   }
 
-  // ✅ team picking only if teamMode
-  let teamId = null;
+  // ✅ team mode: require explicit team pick
+  let chosenTeam = g.teamMode ? team : null;
+
   if (g.teamMode) {
-    const pick = pickTeamOrReject(g, team);
-    if (!pick.ok) {
-      socket.emit("errorMsg", pick.msg);
+    if (chosenTeam !== 0 && chosenTeam !== 1) return;
+
+    // ✅ enforce max 2 per team
+    const teamCount = g.players.filter((p) => p.team === chosenTeam).length;
+    if (teamCount >= 2) {
+      io.to(socket.id).emit("errorMsg", "That team is full (max 2 players). Pick the other team.");
       return;
     }
-    teamId = pick.team;
   }
 
   g.players.push({
     id: socket.id,
     pid: persistentPid,
     name,
-    team: teamId,
+    team: g.teamMode ? chosenTeam : null,
     hand: g.closed.splice(0, HAND_SIZE),
     openedSets: [],
     opened: false,
