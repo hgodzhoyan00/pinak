@@ -695,7 +695,7 @@ useEffect(() => {
     // ✅ persistent player id (may not exist yet)
     const pid = localStorage.getItem("pinak_pid");
 
-    safeEmit("createRoom", { room, name, teamMode, pid, team: teamMode });
+    safeEmit("createRoom", { room, name, teamMode, pid, team: teamMode ? teamPick : null });
   }}
   disabled={!name || !room || (teamMode && teamPick === null)}
 >
@@ -714,7 +714,7 @@ useEffect(() => {
     // ✅ persistent player id (may not exist yet)
     const pid = localStorage.getItem("pinak_pid");
 
-    safeEmit("joinRoom", { room, name, pid, team: teamMode});
+    safeEmit("joinRoom", { room, name, pid, team: teamMode ? teamPick : null });
   }}
   disabled={!name || !room || (teamMode && teamPick === null)}
 >
