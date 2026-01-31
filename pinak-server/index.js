@@ -332,21 +332,6 @@ function canAddAnyCardToAllowedRuns(g, me) {
   return false;
 }
 
-function mustPlayAllMeldsNow(g, p) {
-  // rule is only active when closed is empty and open still exists
-  if (!g) return false;
-  if (g.closed.length !== 0) return false;
-  if ((g.open?.length || 0) === 0) return false;
-
-  // only enforce AFTER the player has drawn this turn
-  if (!p?.canDiscard) return false;
-
-  // if there exists any legal meld move, they must do it first
-  if (canOpenAnyRunFromHand(p.hand)) return true;
-  if (canAddAnyCardToAllowedRuns(g, p)) return true;
-
-  return false;
-}
 /* ---------- GAME STATE ---------- */
 
 const games = {};
