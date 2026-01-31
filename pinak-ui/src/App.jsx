@@ -820,18 +820,6 @@ return (
       ▶️ Start Next Round
     </button>
   )}
-
-  <button
-    style={styles.secondaryBtn}
-    onClick={() => {
-      ensureAudio();
-      sfx.click();
-      leaveToLobby();
-    }}
-    title="Back to Lobby"
-  >
-    ⬅ Back to Lobby
-  </button>
  </div>     
 </div>
     )}
@@ -894,7 +882,7 @@ return (
       : game.players;
 
     // your existing behavior: show opponents (exclude yourself)
-    const visible = list.filter((p) => p.id !== me.id);
+    const visible = list;
 
     return visible.map((p) => (
       <div key={p.id} style={styles.runsRailBlock}>
