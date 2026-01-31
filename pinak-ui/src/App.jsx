@@ -285,9 +285,19 @@ export default function App() {
 
   const [isLandscape, setIsLandscape] = useState(false);
 
+  const [chatOpen, setChatOpen] = useState(true);
+  const [chat, setChat] = useState([]);
+  const [chatText, setChatText] = useState("");
+  const chatEndRef = useRef(null);
+
   useEffect(() => {
   if (!teamMode) setTeamPick(null);
 }, [teamMode]);
+
+  // Auto-scroll chat when a new message arrives
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chat.length]);
 
   useEffect(() => {
     const mq = window.matchMedia("(orientation: landscape)");
@@ -359,6 +369,9 @@ useEffect(() => {
   const onGameState = (state) => {
     setGame(state);
 
+    // pull history once when we first get a state for a room
+    if (state?.room) socket.emit("getChat", { room: state.room });
+
     const meNext = state.players.find((p) => p.id === socket.id);
     const isMyTurnNext = state.players[state.turn]?.id === socket.id;
 
@@ -398,6 +411,15 @@ useEffect(() => {
   socket.on("youAre", onYouAre);
   socket.on("gameState", onGameState);
   socket.on("errorMsg", onErrorMsg);
+  
+  socket.on("chatHistory", ({ room: r, chat: hist }) => {
+  setChat(Array.isArray(hist) ? hist : []);
+});
+
+socket.on("chatMsg", ({ room: r, msg }) => {
+  if (!msg) return;
+  setChat((prev) => [...prev, msg].slice(-60));
+});
 
   return () => {
     socket.off("connect", onConnect);
@@ -405,6 +427,8 @@ useEffect(() => {
     socket.off("youAre", onYouAre);
     socket.off("gameState", onGameState);
     socket.off("errorMsg", onErrorMsg);
+    socket.off("chatHistory");
+    socket.off("chatMsg");
   };
   // IMPORTANT: do NOT depend on discardPick/target/soundOn here
 }, []);
@@ -608,6 +632,16 @@ useEffect(() => {
       return;
     }
     socket.emit(eventName, payload);
+  }
+
+    function sendChat() {
+    const text = chatText.trim();
+    if (!text || !game) return;
+
+    const pid = localStorage.getItem("pinak_pid");
+    socket.emit("sendChat", { room: game.room, pid, name: me?.name, text });
+
+    setChatText("");
   }
 
   function leaveToLobby() {
@@ -1205,92 +1239,168 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
     {/* TOAST */}
       {toast && <div style={styles.toast}>{toast}</div>}
 
-      {/* ACTION BAR */}
-      <div style={styles.stickyBar}>
-        <div style={styles.stickyInner4}>
-          <button
-            style={styles.primaryBtnTiny}
-            disabled={!canCreateRun}
-            onClick={() => {
-              ensureAudio();
-              sfx.run();
+{/* RIGHT CHAT RAIL */}
+<div style={styles.chatRail}>
+  <div style={styles.chatHeader}>
+    <div style={{ fontWeight: 950 }}>Chat</div>
 
-              const handLen = me?.hand?.length ?? 0;
-              const willEmpty = selected.length >= 1 && selected.length === handLen;
+    <button
+      style={styles.chatToggleBtn}
+      onClick={() => setChatOpen((v) => !v)}
+      type="button"
+    >
+      {chatOpen ? "—" : "+"}
+    </button>
+  </div>
 
-              safeEmit("openRun", { room: game.room, cardIds: selected });
+  {chatOpen && (
+    <>
+      <div style={styles.chatBody}>
+        {(chat || []).map((m) => {
+          const isMeMsg = !!(me?.pid && m?.pid && m.pid === me.pid);
 
-              // if that move used your last card(s), you are OUT
-              if (willEmpty) {
-                socket.emit("playerWentOut", { room: game.room });
-              }
+          return (
+            <div
+              key={m.id}
+              style={{
+                marginBottom: 8,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: isMeMsg ? "flex-end" : "flex-start"
+              }}
+            >
+              <div style={{ fontSize: 11, opacity: 0.8, fontWeight: 900 }}>
+                {m.name || "?"}
+              </div>
 
-              setSelected([]);
-              setDiscardPick(null);
-            }}          >
-            Create Run
-          </button>
-
-          <button
-            style={styles.primaryBtnTiny}
-            disabled={!canAddToRun}
-            onClick={() => {
-              ensureAudio();
-              sfx.run();
-
-              const handLen = me?.hand?.length ?? 0;
-              const willEmpty = selected.length >= 1 && selected.length === handLen;
-
-              safeEmit("addToRun", {
-                room: game.room,
-                targetPlayer: target.playerId,
-                runIndex: target.runIndex,
-                cardIds: selected
-              });
-
-              if (willEmpty) {
-                socket.emit("playerWentOut", { room: game.room });
-              }
-
-              setSelected([]);
-              setDiscardPick(null);
-            }}          >
-            Add
-          </button>
-
-          <button
-            style={styles.dangerBtnTiny}
-            disabled={!canDiscard}
-            onClick={() => {
-              ensureAudio();
-              sfx.discard();
-              const idx = me.hand.findIndex((c) => c.id === discardPick);
-              safeEmit("discard", { room: game.room, index: idx });
-              setSelected([]);
-              setDiscardPick(null);
-            }}
-          >
-            {me.mustDiscard ? "Discard!" : "Discard"}
-          </button>
-
-          <button
-            style={styles.secondaryBtnTiny}
-            disabled={!canEndTurn}
-            onClick={() => {
-              ensureAudio();
-              sfx.end();
-              safeEmit("endTurn", { room: game.room });
-              setSelected([]);
-              setDiscardPick(null);
-              setTarget(null);
-              setOpenCount(0);
-            }}
-          >
-            End Turn
-          </button>
-        </div>
+              <div
+                style={{
+                  ...styles.chatBubble,
+                  alignSelf: isMeMsg ? "flex-end" : "flex-start"
+                }}
+              >
+                {m.text}
+              </div>
+            </div>
+          );
+        })}
+        <div ref={chatEndRef} />
       </div>
-    </div>
+
+      <div style={styles.chatInputRow}>
+        <input
+          style={styles.chatInput}
+          value={chatText}
+          onChange={(e) => setChatText(e.target.value)}
+          placeholder="Type…"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") sendChat();
+          }}
+        />
+        <button style={styles.chatSendBtn} onClick={sendChat} type="button">
+          Send
+        </button>
+      </div>
+    </>
+  )}
+</div>
+
+{/* ACTION BAR */}
+<div style={styles.stickyBar}>
+  <div style={styles.stickyInner4}>
+    <button
+      style={styles.primaryBtnTiny}
+      disabled={!canCreateRun}
+      onClick={() => {
+        ensureAudio();
+        sfx.run();
+
+        const handLen = me?.hand?.length ?? 0;
+        const willEmpty = selected.length >= 1 && selected.length === handLen;
+
+        safeEmit("openRun", { room: game.room, cardIds: selected });
+
+        if (willEmpty) {
+          socket.emit("playerWentOut", { room: game.room });
+        }
+
+        setSelected([]);
+        setDiscardPick(null);
+      }}
+      type="button"
+    >
+      Create Run
+    </button>
+
+    <button
+      style={styles.primaryBtnTiny}
+      disabled={!canAddToRun}
+      onClick={() => {
+        if (!target) return;
+
+        ensureAudio();
+        sfx.run();
+
+        const handLen = me?.hand?.length ?? 0;
+        const willEmpty = selected.length >= 1 && selected.length === handLen;
+
+        safeEmit("addToRun", {
+          room: game.room,
+          targetPlayer: target.playerId,
+          runIndex: target.runIndex,
+          cardIds: selected
+        });
+
+        if (willEmpty) {
+          socket.emit("playerWentOut", { room: game.room });
+        }
+
+        setSelected([]);
+        setDiscardPick(null);
+      }}
+      type="button"
+    >
+      Add
+    </button>
+
+    <button
+      style={styles.dangerBtnTiny}
+      disabled={!canDiscard}
+      onClick={() => {
+        ensureAudio();
+        sfx.discard();
+
+        const idx = me?.hand?.findIndex((c) => c.id === discardPick);
+        if (idx == null || idx < 0) return;
+
+        safeEmit("discard", { room: game.room, index: idx });
+        setSelected([]);
+        setDiscardPick(null);
+      }}
+      type="button"
+    >
+      {me?.mustDiscard ? "Discard!" : "Discard"}
+    </button>
+
+    <button
+      style={styles.secondaryBtnTiny}
+      disabled={!canEndTurn}
+      onClick={() => {
+        ensureAudio();
+        sfx.end();
+
+        safeEmit("endTurn", { room: game.room });
+        setSelected([]);
+        setDiscardPick(null);
+        setTarget(null);
+        setOpenCount(0);
+      }}
+      type="button"
+    >
+      End Turn
+    </button>
+  </div>
+</div>    </div>
   );
 }
 /* ---------- STYLES ---------- */
@@ -1983,6 +2093,94 @@ leaveBtn: {
   color: "#fff",
   fontWeight: 950,
   fontSize: 18,
+  cursor: "pointer",
+  touchAction: "manipulation"
+},
+
+chatRail: {
+  position: "fixed",
+  right: 10,
+  top: 72,
+  bottom: 84,
+  width: 260,
+  zIndex: 400,
+  pointerEvents: "auto",
+  display: "flex",
+  flexDirection: "column",
+  borderRadius: 14,
+  background: "rgba(0,0,0,0.18)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
+  backdropFilter: "blur(10px)",
+  overflow: "hidden"
+},
+
+chatHeader: {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "10px 10px",
+  borderBottom: "1px solid rgba(255,255,255,0.10)"
+},
+
+chatToggleBtn: {
+  width: 34,
+  height: 34,
+  borderRadius: 10,
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "rgba(0,0,0,0.25)",
+  color: "#fff",
+  fontWeight: 950,
+  cursor: "pointer",
+  touchAction: "manipulation"
+},
+
+chatBody: {
+  flex: 1,
+  padding: 10,
+  overflowY: "auto",
+  WebkitOverflowScrolling: "touch",
+  display: "flex",
+  flexDirection: "column"
+},
+
+chatBubble: {
+  maxWidth: "90%",
+  padding: "8px 10px",
+  borderRadius: 12,
+  background: "rgba(0,0,0,0.35)",
+  border: "1px solid rgba(255,255,255,0.12)",
+  fontWeight: 800,
+  lineHeight: 1.2
+},
+
+chatInputRow: {
+  display: "flex",
+  gap: 8,
+  padding: 10,
+  borderTop: "1px solid rgba(255,255,255,0.10)"
+},
+
+chatInput: {
+  flex: 1,
+  height: 38,
+  borderRadius: 12,
+  border: "1px solid rgba(255,255,255,0.18)",
+  background: "rgba(0,0,0,0.28)",
+  color: "#fff",
+  padding: "0 10px",
+  outline: "none",
+  touchAction: "manipulation"
+},
+
+chatSendBtn: {
+  width: 64,
+  height: 38,
+  borderRadius: 12,
+  border: "1px solid rgba(255,255,255,0.18)",
+  background: "rgba(0,0,0,0.28)",
+  color: "#fff",
+  fontWeight: 950,
   cursor: "pointer",
   touchAction: "manipulation"
 },

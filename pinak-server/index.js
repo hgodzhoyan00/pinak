@@ -462,6 +462,42 @@ socket.on("joinRoom", ({ room, name, pid, team }) => {
 
   g.log.push(`${name} joined the room`);
   emit(room);
+  /* ---------- CHAT ---------- */
+socket.on("sendChat", ({ room, pid, name, text }) => {
+  const g = games[room];
+  if (!g) return;
+
+  const msg = (text || "").toString().trim();
+  if (!msg) return;
+
+  // basic length guard
+  if (msg.length > 240) return;
+
+  // Resolve sender name safely (don’t trust client fully)
+  const p = g.players.find((x) => (pid && x.pid === pid) || x.id === socket.id);
+  const safeName = p?.name || name || "Player";
+
+  const chatItem = {
+    id: uuid(),
+    ts: Date.now(),
+    pid: p?.pid || pid || null,
+    name: safeName,
+    text: msg
+  };
+
+  // keep a small history in memory (optional)
+  if (!g.chat) g.chat = [];
+  g.chat.push(chatItem);
+  if (g.chat.length > 60) g.chat.shift();
+
+  io.to(room).emit("chatMsg", { room, msg: chatItem });
+});
+
+socket.on("getChat", ({ room }) => {
+  const g = games[room];
+  if (!g) return;
+  io.to(socket.id).emit("chatHistory", { room, chat: g.chat || [] });
+});
 });
 /* ---------- RECONNECT (refresh / PWA resume) ---------- */
 
