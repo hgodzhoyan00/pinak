@@ -160,7 +160,88 @@ function normalizeRun(cards) {
   // set joker suit to run suit for display
   return out.map((c) => (c.value === "2" ? { ...c, suit } : c));
 }
+function canOpenAnyRunFromHand(hand) {
+  if (!Array.isArray(hand) || hand.length < 3) return false;
 
+  const jokers = hand.filter((c) => c.value === "2").length;
+
+  // Need at least 3 total cards and at least 2 real cards in a run (your validRun rule)
+  const realBySuit = {};
+  for (const c of hand) {
+    if (c.value === "2") continue;
+    if (!realBySuit[c.suit]) realBySuit[c.suit] = [];
+    realBySuit[c.suit].push(INDEX[c.value]);
+  }
+
+  for (const suit of Object.keys(realBySuit)) {
+    const idx = realBySuit[suit].sort((a, b) => a - b);
+    const n = idx.length;
+
+    // Need at least 2 real cards (then jokers can complete to 3+)
+    if (n < 2) continue;
+
+    for (let i = 0; i < n; i++) {
+      let gaps = 0;
+      for (let j = i + 1; j < n; j++) {
+        gaps += idx[j] - idx[j - 1] - 1;
+        if (gaps > jokers) break;
+
+        const realCount = j - i + 1;
+
+        // validRun requires >=2 real cards AND gaps <= jokers
+        // also total cards in the run must be >=3
+        if (realCount >= 2 && realCount + jokers >= 3) return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function canAddAnyCardToAllowedRuns(g, me) {
+  if (!g || !me || !me.opened) return false;
+  if (!Array.isArray(me.hand) || me.hand.length === 0) return false;
+
+  // Which runs are you allowed to add to (respect your existing restrictions)
+  const allowedOwners = g.teamMode
+    ? g.players.filter((p) => p.team === me.team)
+    : [me];
+
+  for (const owner of allowedOwners) {
+    const sets = owner.openedSets || [];
+    for (let runIndex = 0; runIndex < sets.length; runIndex++) {
+      const run = sets[runIndex] || [];
+      const runHasJoker = run.some((c) => c.value === "2");
+
+      for (const card of me.hand) {
+        // your existing rule: if adding a joker to a run that had no joker,
+        // you must include at least one real card too.
+        if (card.value === "2" && !runHasJoker) continue;
+
+        const combined = [...run, card];
+        if (validRun(combined)) return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function mustPlayAllMeldsNow(g, p) {
+  // rule is only active when closed is empty and open still exists
+  if (!g) return false;
+  if (g.closed.length !== 0) return false;
+  if ((g.open?.length || 0) === 0) return false;
+
+  // only enforce AFTER the player has drawn this turn
+  if (!p?.canDiscard) return false;
+
+  // if there exists any legal meld move, they must do it first
+  if (canOpenAnyRunFromHand(p.hand)) return true;
+  if (canAddAnyCardToAllowedRuns(g, p)) return true;
+
+  return false;
+}
 /* ---------- GAME STATE ---------- */
 
 const games = {};
@@ -359,6 +440,15 @@ socket.on("discard", ({ room, index }) => {
   if (!g || !p || p.id !== socket.id) return;
   if (g.roundOver || g.gameOver) return;
   if (!p.canDiscard) return; // must draw before discard
+  
+  // 🚫 House rule: closed stack empty → must play all possible melds first
+if (mustPlayAllMeldsNow(g, p)) {
+  io.to(socket.id).emit(
+    "errorMsg",
+    "You must play all possible runs before discarding."
+  );
+  return;
+}
   if (index == null || index < 0 || index >= p.hand.length) return;
 
   // move card to open stack
@@ -401,6 +491,15 @@ socket.on("discard", ({ room, index }) => {
 
     // if discard required, cannot end turn
     if (p.mustDiscard) return;
+
+    // 🚫 House rule: closed stack empty → must play all possible runs before ending turn
+    if (mustPlayAllMeldsNow(g, p)) {
+     io.to(socket.id).emit(
+       "errorMsg",
+         "You must play all possible runs before ending your turn."
+    );
+    return;
+ } 
 
     // optional-discard path: end turn without discarding
     p.canDiscard = false;
