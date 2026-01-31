@@ -185,9 +185,16 @@ socket.on("createRoom", ({ room, name, teamMode, pid, team }) => {
   // ✅ must be 0 or 1 in team mode
   if (isTeam && (chosenTeam !== 0 && chosenTeam !== 1)) return;
 
+  // (Optional but recommended) enforce max 2 per team on create too
+  if (isTeam) {
+  const teamCount = 0; // first player
+  if (teamCount >= 2) return;
+}
+
   games[room] = {
     room,
     teamMode: isTeam,
+    dealerIndex: 0,
     teamScores: isTeam ? { 0: 0, 1: 0 } : null,
     teams: isTeam ? { 0: { label: "", score: 0, members: [] }, 1: { label: "", score: 0, members: [] } } : null,
     players: [
@@ -212,6 +219,9 @@ socket.on("createRoom", ({ room, name, teamMode, pid, team }) => {
     gameOver: false,
     log: [`${name} created the room`]
   };
+
+// ✅ starter is left of dealer (will be 0 if only 1 player)
+games[room].turn = (games[room].dealerIndex + 1) % games[room].players.length;
 
   socket.join(room);
   socket.emit("youAre", { pid: persistentPid });
@@ -250,6 +260,8 @@ socket.on("joinRoom", ({ room, name, pid, team }) => {
     }
   }
 
+  const prevLen = g.players.length;
+
   g.players.push({
     id: socket.id,
     pid: persistentPid,
@@ -262,6 +274,17 @@ socket.on("joinRoom", ({ room, name, pid, team }) => {
     canDiscard: false,
     score: 0
   });
+
+  // ✅ set Round 1 starting turn once (when the room first reaches 2 players)
+  if (
+    prevLen === 1 &&
+    g.players.length >= 2 &&
+    g.players.every((pp) => !pp.canDiscard && !pp.mustDiscard) &&
+    !g.roundOver &&
+    !g.gameOver
+  ) {
+    g.turn = (g.dealerIndex + 1) % g.players.length;
+  }
 
   socket.join(room);
   socket.emit("youAre", { pid: persistentPid });
@@ -501,12 +524,58 @@ socket.on("discard", ({ room, index }) => {
 
     g.roundOver = false;
     g.winner = null;
-    g.turn = 0;
     g.winnerPid = null;
+
+    // ✅ rotate dealer + starter each round
+    g.dealerIndex = ((g.dealerIndex ?? -1) + 1) % g.players.length;  // first continueGame => dealer becomes 0
+    g.turn = (g.dealerIndex + 1) % g.players.length;                // starter = player next to dealer
 
     g.log.push("New round started");
     emit(room);
   });
+
+  /* ---------- NEW GAME (reset scores + fresh round) ---------- */
+socket.on("newGame", ({ room }) => {
+  const g = games[room];
+  if (!g) return;
+
+  // Optional: only allow when the previous game is over
+  if (!g.gameOver) return;
+
+  const deck = buildDeck();
+  g.closed = deck;
+  g.open = [deck.pop()];
+
+  // reset round state
+  g.roundOver = false;
+  g.winner = null;
+  g.winnerPid = null; // ✅ keep consistent with continueGame
+  g.gameOver = false;
+
+// ✅ rotate dealer + starter for rematch too
+g.dealerIndex = ((g.dealerIndex ?? -1) + 1) % g.players.length;
+g.turn = (g.dealerIndex + 1) % g.players.length;
+
+  // reset scores (individual + team)
+  if (g.teamMode) {
+    g.teamScores = { 0: 0, 1: 0 };
+  }
+
+  g.players.forEach((p) => {
+    // fresh hands / round state
+    p.hand = deck.splice(0, HAND_SIZE);
+    p.openedSets = [];
+    p.opened = false;
+    p.mustDiscard = false;
+    p.canDiscard = false;
+
+    // reset per-player score (in team mode we mirror team score anyway)
+    p.score = 0;
+  });
+
+  g.log.push("New game started (scores reset)");
+  emit(room);
+});
 });
 
 function scoreRound(g) {

@@ -585,6 +585,19 @@ useEffect(() => {
     setTarget(null);
     setOpenCount(0);
   }
+  function startNewGame() {
+  if (!game?.gameOver) return;
+  ensureAudio();
+  sfx.run();
+
+  // local UI cleanup
+  setSelected([]);
+  setDiscardPick(null);
+  setTarget(null);
+  setOpenCount(0);
+
+  safeEmit("newGame", { room: game.room });
+}
 
   function safeEmit(eventName, payload) {
     // If buttons are clickable but nothing happens, this guard prevents “silent taps”
@@ -809,21 +822,34 @@ return (
 </div>    
 </div>
 
-    {/* BANNER */}
-    {(game.gameOver || game.roundOver) && (
-      <div style={styles.bannerNeutral}>
-        <div>{game.gameOver ? "🏁 Game Over" : "✅ Round Over"}</div>
+{/* BANNER */}
+{(game.roundOver || game.gameOver) && (
+  <div style={styles.bannerNeutral}>
+    <div>
+      {game.gameOver ? "🏁 Game Over" : "✅ Round Over"}
+    </div>
 
-<div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 10 }}>
-  {game.roundOver && !game.gameOver && (
-    <button style={styles.primaryBtn} onClick={continueNextRound}>
-      ▶️ Start Next Round
-    </button>
-  )}
- </div>     
-</div>
+    {/* ROUND OVER (but game not finished yet) */}
+    {game.roundOver && !game.gameOver && (
+      <button
+        style={{ ...styles.primaryBtn, marginTop: 10 }}
+        onClick={continueNextRound}
+      >
+        ▶️ Start Next Round
+      </button>
     )}
 
+    {/* GAME OVER ONLY */}
+    {game.gameOver && (
+      <button
+        style={{ ...styles.primaryBtn, marginTop: 10 }}
+        onClick={startNewGame}
+      >
+        🔁 Start New Game
+      </button>
+    )}
+  </div>
+)}
     {/* TABLE AREA */}
     <div style={styles.tableArea}>
       <div style={styles.rowTop}>
