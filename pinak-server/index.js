@@ -213,6 +213,9 @@ function validRun(cards) {
   const real = cards.filter((c) => c.value !== "2");
   const jokers = cards.length - real.length;
 
+// ✅ max 1 joker per run
+if (jokers > 1) return false;
+
   // need at least 2 real cards
   if (real.length < 2) return false;
 
@@ -570,11 +573,11 @@ socket.on("discard", ({ room, index }) => {
   // move card to open stack
   g.open.push(p.hand.splice(index, 1)[0]);
 
+  // ✅ clear the restriction after any successful discard
+  p.noDiscardCardId = null;
+
   // discard completes discard requirement
   p.mustDiscard = false;
-
-  // ✅ after any discard, clear the “no discard” restriction
-  p.noDiscardCardId = null;
 
   // ✅ if you discarded your last card, you are OUT immediately
   if (p.hand.length === 0) {
@@ -598,35 +601,35 @@ socket.on("discard", ({ room, index }) => {
 
   emit(room);
 });
-  socket.on("endTurn", ({ room }) => {
-    const g = games[room];
-    const p = g?.players?.[g.turn];
-    if (!g || !p || p.id !== socket.id) return;
-    if (g.roundOver || g.gameOver) return;
 
-    // must have drawn this turn to end turn
-    if (!p.canDiscard) return;
+socket.on("endTurn", ({ room }) => {
+  const g = games[room];
+  const p = g?.players?.[g.turn];
+  if (!g || !p || p.id !== socket.id) return;
+  if (g.roundOver || g.gameOver) return;
 
-    // if discard required, cannot end turn
-    if (p.mustDiscard) return;
+  // must have drawn this turn to end turn
+  if (!p.canDiscard) return;
 
-    // 🚫 House rule: closed stack empty → must play all possible runs before ending turn
-    if (mustPlayAllMeldsNow(g, p)) {
-     io.to(socket.id).emit(
-       "errorMsg",
-         "You must play all possible runs before ending your turn."
-    );
+  // if discard required, cannot end turn
+  if (p.mustDiscard) return;
+
+  // 🚫 House rule: closed stack empty → must play mandatory melds first
+  if (mustPlayAllMeldsNow(g, p)) {
+    io.to(socket.id).emit("errorMsg", "You must play all mandatory adds/runs before ending your turn.");
     return;
- } 
+  }
 
-    // optional-discard path: end turn without discarding
-    p.canDiscard = false;
-    p.noDiscardCardId = null;
-    g.turn = (g.turn + 1) % g.players.length;
+  // optional-discard path: end turn without discarding
+  p.canDiscard = false;
 
-    emit(room);
-  });
+  // ✅ clear the restriction when the turn ends
+  p.noDiscardCardId = null;
 
+  g.turn = (g.turn + 1) % g.players.length;
+
+  emit(room);
+});
   /* ---------- OPEN / ADD RUN ---------- */
 
   socket.on("openRun", ({ room, cardIds }) => {
@@ -643,6 +646,10 @@ socket.on("discard", ({ room, index }) => {
 
     const cards = ids.map((id) => p.hand.find((c) => c.id === id));
     if (cards.includes(undefined)) return;
+
+    const jokerCount = cards.filter((c) => c.value === "2").length;
+    if (jokerCount > 1) return; // ✅ max 1 joker per run
+
     if (!validRun(cards)) return;
 
     const normalized = normalizeRun(cards);
@@ -679,16 +686,24 @@ socket.on("discard", ({ room, index }) => {
     if (add.includes(undefined)) return;
 
     const original = [...owner.openedSets[runIndex]];
-    const hadJoker = original.some((c) => c.value === "2");
-    const addingJoker = add.some((c) => c.value === "2");
-    const addingReal = add.some((c) => c.value !== "2");
 
-    // If adding a joker to a run that previously had no joker, must include at least one real card too
-    if (addingJoker && !hadJoker && !addingReal) return;
+    // counts (supports selecting multiple cards)
+    const originalJokers = original.filter((c) => c.value === "2").length;
+    const addJokers = add.filter((c) => c.value === "2").length;
+    const addReals = add.filter((c) => c.value !== "2").length;
+
+    // ✅ House rule: max 1 joker per run total
+    if (originalJokers + addJokers > 1) return;
+
+    // ✅ With max-1-joker, joker-only add is never allowed
+    if (addJokers > 0 && addReals === 0) return;
+
+    // ✅ If you are adding a joker (and the run had none), you must include at least one real too
+    // (already covered by joker-only check above, but keep explicit for clarity)
+    if (addJokers > 0 && originalJokers === 0 && addReals === 0) return;
 
     const combined = [...original, ...add];
     if (!validRun(combined)) return;
-
     owner.openedSets[runIndex] = normalizeRun(combined);
     me.hand = me.hand.filter((c) => !ids.includes(c.id));
 
