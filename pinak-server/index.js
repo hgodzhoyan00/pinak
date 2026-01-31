@@ -102,6 +102,108 @@ function pickTeamOrReject(g, requestedTeam) {
 
   return { ok: false, msg: "Both teams are full (2v2 max)." };
 }
+/* ---------- HOUSE RULE HELPERS ---------- */
+
+// Pure run = 3+ consecutive cards of same suit with NO jokers ("2")
+function hasPureRun(hand) {
+  if (!Array.isArray(hand) || hand.length < 3) return false;
+
+  // group by suit, ignore jokers (value === "2")
+  const bySuit = {};
+  for (const c of hand) {
+    if (!c || c.value === "2") continue;
+    (bySuit[c.suit] ||= []).push(INDEX[c.value]);
+  }
+
+  // check any suit has 3+ consecutive
+  for (const suit of Object.keys(bySuit)) {
+    const arr = bySuit[suit].sort((a, b) => a - b);
+    let streak = 1;
+    for (let i = 1; i < arr.length; i++) {
+      if (arr[i] === arr[i - 1] + 1) streak++;
+      else if (arr[i] !== arr[i - 1]) streak = 1;
+
+      if (streak >= 3) return true;
+    }
+  }
+  return false;
+}
+
+// Can current player legally add something to ANY run they are allowed to add to?
+function canAddToAnyRun(g, me) {
+  if (!g || !me) return false;
+  if (!me.opened) return false; // your existing rule: must have opened before adding
+  if (!Array.isArray(me.hand) || me.hand.length === 0) return false;
+
+  // Which runs are legal targets for this player?
+  const owners = g.teamMode
+    ? g.players.filter((p) => p.team === me.team)
+    : [me];
+
+  // Try to find ANY legal add:
+  // - any single real card
+  // - any single joker onto a run that already had a joker
+  // - joker+real pair for adding joker to a run that had no joker (your existing constraint)
+  const hand = me.hand;
+
+  for (const owner of owners) {
+    const sets = owner.openedSets || [];
+    for (let runIndex = 0; runIndex < sets.length; runIndex++) {
+      const original = sets[runIndex];
+      if (!Array.isArray(original) || original.length < 3) continue;
+
+      const hadJoker = original.some((c) => c.value === "2");
+
+      // 1) single-card adds
+      for (const card of hand) {
+        if (!card) continue;
+
+        // adding a joker to a run with no joker is NOT legal alone (per your rule)
+        if (card.value === "2" && !hadJoker) continue;
+
+        const combined = [...original, card];
+        if (validRun(combined)) return true;
+      }
+
+      // 2) joker+real pair add (only relevant when run had no joker)
+      if (!hadJoker) {
+        const jokers = hand.filter((c) => c.value === "2");
+        const reals = hand.filter((c) => c.value !== "2");
+
+        if (jokers.length && reals.length) {
+          for (const j of jokers) {
+            for (const r of reals) {
+              const combined = [...original, j, r];
+              if (validRun(combined)) return true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+// Master rule gate used by discard/endTurn:
+// When closed is empty, block discard/endTurn if mandatory actions exist
+function mustPlayAllMeldsNow(g, p) {
+  if (!g || !p) return false;
+
+  // Only applies once closed stack is empty
+  if ((g.closed?.length || 0) !== 0) return false;
+
+  // Must have drawn this turn (consistent with your server: open/add requires canDiscard)
+  if (!p.canDiscard) return false;
+
+  // Add-to-run mandatory if any add exists
+  if (canAddToAnyRun(g, p)) return true;
+
+  // Create-run mandatory ONLY if there exists a pure run in hand (no jokers)
+  if (hasPureRun(p.hand || [])) return true;
+
+  return false;
+}
 
 /* ---------- RUN VALIDATION ---------- */
 
@@ -407,31 +509,42 @@ socket.on("reconnectRoom", ({ room, pid }) => {
     // closed draw => discard REQUIRED before end turn
     p.mustDiscard = true;
     p.canDiscard = true;
+    p.noDiscardCardId = null;
 
     emit(room);
   });
 
-  socket.on("drawOpen", ({ room, count }) => {
-    const g = games[room];
-    const p = g?.players?.[g.turn];
-    if (!g || !p || p.id !== socket.id) return;
-    if (g.roundOver || g.gameOver) return;
-    if (p.canDiscard) return; // already drew this turn
-    if (!count || count < 1) return;
-    if (count > g.open.length) return;
+socket.on("drawOpen", ({ room, count }) => {
+  const g = games[room];
+  const p = g?.players?.[g.turn];
+  if (!g || !p || p.id !== socket.id) return;
+  if (g.roundOver || g.gameOver) return;
+  if (p.canDiscard) return; // already drew this turn
+  if (!count || count < 1) return;
+  if (count > g.open.length) return;
 
-    // open is stored bottom->top; draw from TOP = last items
-    p.hand.push(...g.open.splice(-count));
+  const preLen = g.open.length;
 
-    // If you emptied the open stack, you MUST discard to re-seed it.
-    // Otherwise discard stays optional.
-    p.mustDiscard = g.open.length === 0;
+  // open is stored bottom->top; draw from TOP = last items
+  const drawn = g.open.splice(-count);
+  p.hand.push(...drawn);
 
-    p.canDiscard = true;
+  // If you emptied the open stack, you MUST discard to re-seed it.
+  // Otherwise discard stays optional.
+  p.mustDiscard = g.open.length === 0;
 
-    emit(room);
-  });
+  p.canDiscard = true;
 
+  // ✅ New rule: ONLY if open had exactly 1 card and you drew that 1,
+  // you cannot discard that exact card this turn.
+  if (preLen === 1 && count === 1 && drawn[0]?.id) {
+    p.noDiscardCardId = drawn[0].id;
+  } else {
+    p.noDiscardCardId = null;
+  }
+
+  emit(room);
+});
 /* ---------- DISCARD ---------- */
 
 socket.on("discard", ({ room, index }) => {
@@ -440,16 +553,19 @@ socket.on("discard", ({ room, index }) => {
   if (!g || !p || p.id !== socket.id) return;
   if (g.roundOver || g.gameOver) return;
   if (!p.canDiscard) return; // must draw before discard
-  
-  // 🚫 House rule: closed stack empty → must play all possible melds first
-if (mustPlayAllMeldsNow(g, p)) {
-  io.to(socket.id).emit(
-    "errorMsg",
-    "You must play all possible runs before discarding."
-  );
-  return;
-}
   if (index == null || index < 0 || index >= p.hand.length) return;
+
+  // 🚫 House rule: closed empty → must play mandatory melds first
+  if (mustPlayAllMeldsNow(g, p)) {
+    io.to(socket.id).emit("errorMsg", "You must play all mandatory adds/runs before discarding.");
+    return;
+  }
+
+  // 🚫 New rule: if open had exactly 1 card and you drew it, you can't discard that same card
+  if (p.noDiscardCardId && p.hand[index]?.id === p.noDiscardCardId) {
+    io.to(socket.id).emit("errorMsg", "You can’t discard the last open-stack card you just drew.");
+    return;
+  }
 
   // move card to open stack
   g.open.push(p.hand.splice(index, 1)[0]);
@@ -457,11 +573,14 @@ if (mustPlayAllMeldsNow(g, p)) {
   // discard completes discard requirement
   p.mustDiscard = false;
 
+  // ✅ after any discard, clear the “no discard” restriction
+  p.noDiscardCardId = null;
+
   // ✅ if you discarded your last card, you are OUT immediately
   if (p.hand.length === 0) {
     g.roundOver = true;
     g.winner = p.id;      // keep for UI
-    g.winnerPid = p.pid;  // ✅ stable identity for scoring
+    g.winnerPid = p.pid;  // stable identity for scoring
 
     scoreRound(g);
     checkWin(g);
@@ -479,7 +598,6 @@ if (mustPlayAllMeldsNow(g, p)) {
 
   emit(room);
 });
-
   socket.on("endTurn", ({ room }) => {
     const g = games[room];
     const p = g?.players?.[g.turn];
@@ -503,6 +621,7 @@ if (mustPlayAllMeldsNow(g, p)) {
 
     // optional-discard path: end turn without discarding
     p.canDiscard = false;
+    p.noDiscardCardId = null;
     g.turn = (g.turn + 1) % g.players.length;
 
     emit(room);
