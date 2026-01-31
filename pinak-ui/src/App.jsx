@@ -267,7 +267,7 @@ export default function App() {
   const [name, setName] = useState("");
   const [room, setRoom] = useState("");
   const [teamMode, setTeamMode] = useState(false);
-  const [teamPick, setTeamPick] = useState(0);
+  const [teamPick, setTeamPick] = useState(null);
 
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
@@ -284,6 +284,10 @@ export default function App() {
   const toastTimerRef = useRef(null);
 
   const [isLandscape, setIsLandscape] = useState(false);
+
+  useEffect(() => {
+  if (!teamMode) setTeamPick(null);
+}, [teamMode]);
 
   useEffect(() => {
     const mq = window.matchMedia("(orientation: landscape)");
@@ -691,9 +695,9 @@ useEffect(() => {
     // ✅ persistent player id (may not exist yet)
     const pid = localStorage.getItem("pinak_pid");
 
-    safeEmit("createRoom", { room, name, teamMode, pid, team:selectedTeam });
+    safeEmit("createRoom", { room, name, teamMode, pid, team: teamMode });
   }}
-  disabled={!name || !room}
+  disabled={!name || !room || (teamMode && teamPick === null)}
 >
   Create
 </button>
@@ -710,9 +714,9 @@ useEffect(() => {
     // ✅ persistent player id (may not exist yet)
     const pid = localStorage.getItem("pinak_pid");
 
-    safeEmit("joinRoom", { room, name, pid, team: selectedTeam});
+    safeEmit("joinRoom", { room, name, pid, team: teamMode});
   }}
-  disabled={!name || !room}
+  disabled={!name || !room || (teamMode && teamPick === null)}
 >
   Join
 </button>            </div>
