@@ -328,43 +328,44 @@ socket.on("reconnectRoom", ({ room, pid }) => {
     emit(room);
   });
 
-  /* ---------- DISCARD ---------- */
+/* ---------- DISCARD ---------- */
 
-  socket.on("discard", ({ room, index }) => {
-    const g = games[room];
-    const p = g?.players?.[g.turn];
-    if (!g || !p || p.id !== socket.id) return;
-    if (g.roundOver || g.gameOver) return;
-    if (!p.canDiscard) return; // must draw before discard
-    if (index == null || index < 0 || index >= p.hand.length) return;
+socket.on("discard", ({ room, index }) => {
+  const g = games[room];
+  const p = g?.players?.[g.turn];
+  if (!g || !p || p.id !== socket.id) return;
+  if (g.roundOver || g.gameOver) return;
+  if (!p.canDiscard) return; // must draw before discard
+  if (index == null || index < 0 || index >= p.hand.length) return;
 
-    // move card to open stack
-    g.open.push(p.hand.splice(index, 1)[0]);
+  // move card to open stack
+  g.open.push(p.hand.splice(index, 1)[0]);
 
-    // discard completes discard requirement
-    p.mustDiscard = false;
+  // discard completes discard requirement
+  p.mustDiscard = false;
 
-    // ✅ if you discarded your last card, you are OUT immediately
-    if (p.hand.length === 0) {
-      g.roundOver = true;
-      g.winner = p.id;
+  // ✅ if you discarded your last card, you are OUT immediately
+  if (p.hand.length === 0) {
+    g.roundOver = true;
+    g.winner = p.id;      // keep for UI
+    g.winnerPid = p.pid;  // ✅ stable identity for scoring
 
-      scoreRound(g);
-      checkWin(g);
+    scoreRound(g);
+    checkWin(g);
 
-      // lock turn state for clarity
-      p.canDiscard = false;
-
-      emit(room);
-      return;
-    }
-
-    // normal discard ends turn
+    // lock turn state for clarity
     p.canDiscard = false;
-    g.turn = (g.turn + 1) % g.players.length;
 
     emit(room);
-  });
+    return;
+  }
+
+  // normal discard ends turn
+  p.canDiscard = false;
+  g.turn = (g.turn + 1) % g.players.length;
+
+  emit(room);
+});
 
   socket.on("endTurn", ({ room }) => {
     const g = games[room];
@@ -473,6 +474,7 @@ socket.on("reconnectRoom", ({ room, pid }) => {
 
     g.roundOver = true;
     g.winner = pTurn.id;
+    g.winnerPid = pTurn.pid; // stable identity for scoring
 
     scoreRound(g);
     checkWin(g);
@@ -500,28 +502,28 @@ socket.on("reconnectRoom", ({ room, pid }) => {
     g.roundOver = false;
     g.winner = null;
     g.turn = 0;
+    g.winnerPid = null;
 
     g.log.push("New round started");
     emit(room);
   });
 });
 
-/* ---------- SCORING ---------- */
-/*
-RULES IMPLEMENTED:
-- Winner gain = opened sets points + 10 bonus
-- Others net = opened sets points - hand points
-- Double penalty for a player who never opened: net *= 2
-- In teamMode: compute the same per-player deltas, but apply them to TEAM totals.
-*/
 function scoreRound(g) {
   const openedPts = (p) => p.openedSets.flat().reduce((s, c) => s + (c.points || 0), 0);
   const handPts = (p) => p.hand.reduce((s, c) => s + (c.points || 0), 0);
 
-  // INDIVIDUAL MODE (unchanged)
+  // ✅ winner identity should be stable (pid). fallback to id if needed.
+  const winnerPid =
+    g.winnerPid ??
+    (g.winner ? g.players.find((pp) => pp.id === g.winner)?.pid : null);
+
+  // INDIVIDUAL MODE
   if (!g.teamMode) {
     g.players.forEach((p) => {
-      if (p.id === g.winner) {
+      const isWinner = winnerPid ? p.pid === winnerPid : p.id === g.winner;
+
+      if (isWinner) {
         const gain = openedPts(p) + 10;
         p.score += gain;
         return;
@@ -543,7 +545,9 @@ function scoreRound(g) {
     const team = p.team;
     if (team !== 0 && team !== 1) return;
 
-    if (p.id === g.winner) {
+    const isWinner = winnerPid ? p.pid === winnerPid : p.id === g.winner;
+
+    if (isWinner) {
       const gain = openedPts(p) + 10;
       teamDelta[team] += gain;
       return;
@@ -574,7 +578,6 @@ function checkWin(g) {
     g.gameOver = true;
   }
 }
-
 /* ---------- EMIT ---------- */
 
 function emit(room) {
