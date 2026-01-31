@@ -267,6 +267,7 @@ export default function App() {
   const [name, setName] = useState("");
   const [room, setRoom] = useState("");
   const [teamMode, setTeamMode] = useState(false);
+  const [teamPick, setTeamPick] = useState(0);
 
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
@@ -646,7 +647,37 @@ useEffect(() => {
               <input type="checkbox" checked={teamMode} onChange={(e) => setTeamMode(e.target.checked)} />
               <span style={{ marginLeft: 8, color: stylesTokens.textStrong, fontWeight: 950 }}>Team Mode</span>
             </label>
+{teamMode && (
+  <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+    <button
+      style={{
+        ...styles.secondaryBtn,
+        width: "auto",
+        padding: "10px 12px",
+        opacity: teamPick === 0 ? 1 : 0.7,
+        border: teamPick === 0 ? "1px solid rgba(120, 220, 255, 0.55)" : styles.secondaryBtn.border
+      }}
+      onClick={() => setTeamPick(0)}
+      type="button"
+    >
+      Team 1
+    </button>
 
+    <button
+      style={{
+        ...styles.secondaryBtn,
+        width: "auto",
+        padding: "10px 12px",
+        opacity: teamPick === 1 ? 1 : 0.7,
+        border: teamPick === 1 ? "1px solid rgba(120, 220, 255, 0.55)" : styles.secondaryBtn.border
+      }}
+      onClick={() => setTeamPick(1)}
+      type="button"
+    >
+      Team 2
+    </button>
+  </div>
+)}
             <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
 <button
   style={styles.primaryBtn}
@@ -660,7 +691,7 @@ useEffect(() => {
     // ✅ persistent player id (may not exist yet)
     const pid = localStorage.getItem("pinak_pid");
 
-    safeEmit("createRoom", { room, name, teamMode, pid });
+    safeEmit("createRoom", { room, name, teamMode, pid, team:selectedTeam });
   }}
   disabled={!name || !room}
 >
@@ -679,7 +710,7 @@ useEffect(() => {
     // ✅ persistent player id (may not exist yet)
     const pid = localStorage.getItem("pinak_pid");
 
-    safeEmit("joinRoom", { room, name, pid });
+    safeEmit("joinRoom", { room, name, pid, team: selectedTeam});
   }}
   disabled={!name || !room}
 >
@@ -832,39 +863,50 @@ return (
     hideHeader={true}
   />
 
-  <div style={styles.runsRail}>
-    {/* TEAM MODE HEADER (one line at top) */}
-    {game.teamMode && teamSummary && (
-      <div style={styles.runsRailTeamHeader}>
-        <span style={styles.runsRailTeamSide}>
-          <span style={styles.runsRailTeamLabel}>{teamSummary[0].label}</span>
-          <span style={styles.runsRailTeamScorePill}>{teamSummary[0].score}</span>
-        </span>
+<div style={styles.runsRail}>
+  {/* TEAM MODE HEADER (one line at top) */}
+  {game.teamMode && teamSummary && (
+    <div style={styles.runsRailTeamHeader}>
+      <span style={styles.runsRailTeamSide}>
+        <span style={styles.runsRailTeamLabel}>{teamSummary[0].label}</span>
+        <span style={styles.runsRailTeamScorePill}>{teamSummary[0].score}</span>
+      </span>
 
-        <span style={styles.runsRailTeamDivider}>—</span>
+      <span style={styles.runsRailTeamDivider}>—</span>
 
-        <span style={{ ...styles.runsRailTeamSide, justifyContent: "flex-end" }}>
-          <span style={styles.runsRailTeamScorePill}>{teamSummary[1].score}</span>
-          <span style={styles.runsRailTeamLabel}>{teamSummary[1].label}</span>
-        </span>
-      </div>
-    )}
+      <span style={{ ...styles.runsRailTeamSide, justifyContent: "flex-end" }}>
+        <span style={styles.runsRailTeamScorePill}>{teamSummary[1].score}</span>
+        <span style={styles.runsRailTeamLabel}>{teamSummary[1].label}</span>
+      </span>
+    </div>
+  )}
 
-    {/* PLAYER BLOCKS (only show runs) */}
-    {game.players
-      .filter((p) => game.teamMode ? p.openedSets?.length : true)
-      .map((p) => (
-        <div key={p.id} style={styles.runsRailBlock}>
-          <div style={styles.runsRailNameRow}>
-            <span style={styles.runsRailNameText}>
-              {p.name}
-              {p.id === me.id ? " (You)" : ""}
-            </span>
+  {/* PLAYER BLOCKS */}
+  {(() => {
+    // In team mode: group team 0 players together, then team 1.
+    // In individual mode: just list everyone except you (or include you if you want).
+    const list = game.teamMode
+      ? [...game.players].sort((a, b) => (a.team ?? 0) - (b.team ?? 0))
+      : game.players;
 
-            {/* INDIVIDUAL MODE ONLY: show score next to name */}
-            {!game.teamMode && <span style={styles.runsRailScore}>{p.score ?? 0}</span>}
-          </div>
+    // your existing behavior: show opponents (exclude yourself)
+    const visible = list.filter((p) => p.id !== me.id);
 
+    return visible.map((p) => (
+      <div key={p.id} style={styles.runsRailBlock}>
+        {/* In individual mode show score next to name; in team mode hide per-player score */}
+        <div style={styles.runsRailNameRow}>
+          <span style={styles.runsRailNameText}>
+            {p.name}
+            {p.id === me.id ? " (You)" : ""}
+          </span>
+
+          {!game.teamMode && (
+            <span style={styles.runsRailScore}>{p.score ?? 0}</span>
+          )}
+        </div>
+
+        {p.openedSets?.length ? (
           <div style={styles.runsRailSets}>
             {p.openedSets.map((set, i) => {
               const isTarget = target?.playerId === p.id && target?.runIndex === i;
@@ -883,9 +925,13 @@ return (
               );
             })}
           </div>
-        </div>
-      ))}
-  </div>
+        ) : (
+          <div style={styles.runsRailEmpty}>—</div>
+        )}
+      </div>
+    ));
+  })()}
+</div>
 </div>
         {/* CENTER */}
         <div style={styles.midCenter}>
