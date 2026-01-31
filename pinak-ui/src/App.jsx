@@ -2100,27 +2100,31 @@ leaveBtn: {
 chatRail: {
   position: "fixed",
   right: 10,
-  top: 72,
-  bottom: 84,
+  top: 72,          // below top bar
+  bottom: 310,      // ✅ keeps clear of handDock + action bar
   width: 260,
-  zIndex: 400,
+  zIndex: 350,
   pointerEvents: "auto",
-  display: "flex",
-  flexDirection: "column",
+
   borderRadius: 14,
   background: "rgba(0,0,0,0.18)",
   border: "1px solid rgba(255,255,255,0.10)",
   boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
   backdropFilter: "blur(10px)",
+
+  display: "flex",
+  flexDirection: "column",
   overflow: "hidden"
 },
 
+
 chatHeader: {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
   padding: "10px 10px",
-  borderBottom: "1px solid rgba(255,255,255,0.10)"
+  borderBottom: "1px solid rgba(255,255,255,0.10)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10
 },
 
 chatToggleBtn: {
@@ -2137,11 +2141,9 @@ chatToggleBtn: {
 
 chatBody: {
   flex: 1,
-  padding: 10,
   overflowY: "auto",
   WebkitOverflowScrolling: "touch",
-  display: "flex",
-  flexDirection: "column"
+  padding: 10
 },
 
 chatBubble: {
