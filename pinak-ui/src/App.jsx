@@ -290,6 +290,16 @@ export default function App() {
   const [chatText, setChatText] = useState("");
   const chatEndRef = useRef(null);
 
+  function sendChat() {
+  const text = chatText.trim();
+  if (!text || !game) return;
+
+  const pid = localStorage.getItem("pinak_pid");
+  socket.emit("sendChat", { room: game.room, pid, name: me?.name, text });
+
+  setChatText("");
+}
+
   useEffect(() => {
   if (!teamMode) setTeamPick(null);
 }, [teamMode]);
@@ -306,6 +316,22 @@ export default function App() {
     mq.addEventListener?.("change", update);
     return () => mq.removeEventListener?.("change", update);
   }, []);
+
+  useEffect(() => {
+  const onChatMsg = (msg) => {
+    setChat((prev) => {
+      // dedupe (prevents double-add if listener accidentally fires twice)
+      if (prev.some((m) => m.id === msg.id)) return prev;
+      return [...prev, msg];
+    });
+  };
+
+  socket.on("chatMsg", onChatMsg);
+
+  return () => {
+    socket.off("chatMsg", onChatMsg);
+  };
+}, []);
 
   /* ---------- SOUND HELPERS ---------- */
   function ensureAudio() {
@@ -2100,10 +2126,11 @@ leaveBtn: {
 chatRail: {
   position: "fixed",
   right: 10,
-  top: 72,          // below top bar
-  bottom: 320,      // ✅ keeps clear of handDock + action bar
-  width: 260,
-  zIndex: 800,
+  top: 92,                 // below top bar
+  bottom: 360,             // ✅ shorter so it can't touch the hand area
+  width: 280,
+
+  zIndex: 6000,            // ✅ MUST beat hand hitboxes (yours are 1000+)
   pointerEvents: "auto",
 
   borderRadius: 14,
@@ -2117,27 +2144,28 @@ chatRail: {
   overflow: "hidden"
 },
 
-
 chatHeader: {
-  padding: "10px 10px",
-  borderBottom: "1px solid rgba(255,255,255,0.10)",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: 10
+  padding: "10px 12px",
+  borderBottom: "1px solid rgba(255,255,255,0.10)",
+
+  zIndex: 6001,
+  pointerEvents: "auto"
 },
 
 chatToggleBtn: {
-  width: 34,
+  width: 40,
   height: 34,
   borderRadius: 10,
-  border: "1px solid rgba(255,255,255,0.14)",
-  background: "rgba(0,0,0,0.25)",
+  border: "1px solid rgba(255,255,255,0.18)",
+  background: "rgba(0,0,0,0.28)",
   color: "#fff",
   fontWeight: 950,
   cursor: "pointer",
-  pointerEvents: "auto",
-  touchAction: "manipulation"
+  touchAction: "manipulation",
+  pointerEvents: "auto"
 },
 
 chatBody: {
