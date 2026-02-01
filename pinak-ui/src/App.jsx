@@ -1692,12 +1692,18 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr)",
     gap: 8,
-    alignItems: "start",
+    alignItems: "flex-start",
     minHeight: 0
   },
 
-  midSide: { minWidth: 0 },
-  midCenter: { minWidth: 0 },
+midSide: {
+  minWidth: 0,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "stretch",
+  justifyContent: "flex-start", // ✅ keeps chat at top
+  gap: 12, // optional spacing between Seat + Chat
+},
 
   rowBottom: { 
     minHeight: 0,
@@ -2208,27 +2214,21 @@ leaveBtn: {
 },
 
 chatRail: {
-  position: "fixed",
-  right: 10,
-  top: 72, // below top bar
   width: "100%",
-  alignSelf: "stretch",
-  marginTop: 0,
-  height: "min(300px, calc(100svh - 380px))", // ✅ short enough to avoid hand
-  zIndex: 550, // below toast (9999) but above table
-  pointerEvents: "auto",
-  bottom: 300,
-  height: "auto",
-
-  display: "flex",
-  flexDirection: "column",
-
-  borderRadius: 14,
+  borderRadius: 16,
   background: "rgba(0,0,0,0.18)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
-  backdropFilter: "blur(10px)",
-  overflow: "hidden"
+  border: "1px solid rgba(255,255,255,0.12)",
+  boxShadow: "0 10px 30px rgba(0,0,0,0.28)",
+  overflow: "hidden",
+
+  // ✅ critical: don't float in the middle
+  position: "relative",
+  top: "auto",
+  right: "auto",
+  transform: "none",
+
+  // ✅ keep it from falling into the hand
+  maxHeight: "calc(100vh - 340px)",
 },
 
 chatHeader: {
