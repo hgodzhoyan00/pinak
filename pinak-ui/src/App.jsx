@@ -1299,17 +1299,13 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
                 {m.name || "?"}
               </div>
 
-              <div
-                style={{
-                  ...styles.chatBubble,
-                  alignSelf: isMeMsg ? "flex-end" : "flex-start"
-                }}
-              >
+              <div style={{ ...styles.chatBubble }}>
                 {m.text}
               </div>
             </div>
           );
         })}
+
         <div ref={chatEndRef} />
       </div>
 
@@ -2126,11 +2122,15 @@ leaveBtn: {
 chatRail: {
   position: "fixed",
   right: 10,
-  top: 92,                 // below top bar
-  bottom: 360,             // ✅ shorter so it can't touch the hand area
+  top: 84, // below top bar
   width: 280,
 
-  zIndex: 6000,            // ✅ MUST beat hand hitboxes (yours are 1000+)
+  // Key fix: use a real height instead of bottom-based sizing
+  height: "min(320px, calc(100svh - 360px))",
+  minHeight: 56, // so the header always shows
+  maxHeight: 340,
+
+  zIndex: 1200, // above center/hand layers (handDock is 600, stickyBar is 999)
   pointerEvents: "auto",
 
   borderRadius: 14,
@@ -2148,24 +2148,20 @@ chatHeader: {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  padding: "10px 12px",
-  borderBottom: "1px solid rgba(255,255,255,0.10)",
-
-  zIndex: 6001,
-  pointerEvents: "auto"
+  padding: "10px 10px",
+  borderBottom: "1px solid rgba(255,255,255,0.10)"
 },
 
 chatToggleBtn: {
-  width: 40,
-  height: 34,
+  width: 36,
+  height: 32,
   borderRadius: 10,
   border: "1px solid rgba(255,255,255,0.18)",
-  background: "rgba(0,0,0,0.28)",
+  background: "rgba(0,0,0,0.22)",
   color: "#fff",
   fontWeight: 950,
   cursor: "pointer",
-  touchAction: "manipulation",
-  pointerEvents: "auto"
+  touchAction: "manipulation"
 },
 
 chatBody: {
@@ -2173,16 +2169,6 @@ chatBody: {
   overflowY: "auto",
   WebkitOverflowScrolling: "touch",
   padding: 10
-},
-
-chatBubble: {
-  maxWidth: "200",
-  padding: "8px 10px",
-  borderRadius: 12,
-  background: "rgba(0,0,0,0.35)",
-  border: "1px solid rgba(255,255,255,0.12)",
-  fontWeight: 800,
-  lineHeight: 1.2
 },
 
 chatInputRow: {
@@ -2197,14 +2183,15 @@ chatInput: {
   height: 36,
   borderRadius: 10,
   border: "1px solid rgba(255,255,255,0.18)",
-  background: "rgba(0,0,0,0.28)",
+  background: "rgba(0,0,0,0.22)",
   color: "#fff",
   padding: "0 10px",
-  outline: "none",
+  outline: "none"
 },
 
 chatSendBtn: {
   height: 36,
+  padding: "0 12px",
   borderRadius: 10,
   border: "1px solid rgba(255,255,255,0.18)",
   background: "rgba(0,0,0,0.28)",
@@ -2212,6 +2199,17 @@ chatSendBtn: {
   fontWeight: 950,
   cursor: "pointer",
   touchAction: "manipulation"
+},
+
+chatBubble: {
+  maxWidth: 220,
+  padding: "8px 10px",
+  borderRadius: 12,
+  background: "rgba(255,255,255,0.10)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  fontWeight: 800,
+  lineHeight: 1.25,
+  wordBreak: "break-word"
 },
 
 };
