@@ -900,253 +900,203 @@ return (
         />
       </div>
 
-      <div style={{...styles.rowMid, alignItems: "flex-start"}}>
-{/* LEFT */}
-<div style={styles.midSide}>
-  
-  <Seat
-    pos="left"
-    player={pLeft}
-    isMe={false}
-    isTurn={game.players[game.turn]?.id === pLeft?.id}
-    target={target}
-    setTarget={setTarget}
-    sfxClick={sfx.click}
-    compact={true}
-    hideHeader={true}
-  />
+<div style={{ ...styles.rowMid, alignItems: "flex-start" }}>
+  {/* LEFT */}
+  <div style={styles.midSide}>
+    <Seat
+      pos="left"
+      player={pLeft}
+      isMe={false}
+      isTurn={game.players[game.turn]?.id === pLeft?.id}
+      target={target}
+      setTarget={setTarget}
+      sfxClick={sfx.click}
+      compact={true}
+      hideHeader={true}
+    />
 
-<div style={styles.runsRail}>
-  {/* TEAM MODE HEADER (one line at top) */}
-  {game.teamMode && teamSummary && (
-    <div style={styles.runsRailTeamHeader}>
-      <span style={styles.runsRailTeamSide}>
-        <span style={styles.runsRailTeamLabel}>{teamSummary[0].label}</span>
-        <span style={styles.runsRailTeamScorePill}>{teamSummary[0].score}</span>
-      </span>
-
-      <span style={styles.runsRailTeamDivider}>—</span>
-
-      <span style={{ ...styles.runsRailTeamSide, justifyContent: "flex-end" }}>
-        <span style={styles.runsRailTeamScorePill}>{teamSummary[1].score}</span>
-        <span style={styles.runsRailTeamLabel}>{teamSummary[1].label}</span>
-      </span>
-    </div>
-  )}
-
-  {/* PLAYER BLOCKS */}
-  {(() => {
-    // In team mode: group team 0 players together, then team 1.
-    // In individual mode: just list everyone except you (or include you if you want).
-    const list = game.teamMode
-      ? [...game.players].sort((a, b) => (a.team ?? 0) - (b.team ?? 0))
-      : game.players;
-
-    // your existing behavior: show opponents (exclude yourself)
-    const visible = list;
-
-    return visible.map((p) => (
-      <div key={p.id} style={styles.runsRailBlock}>
-        {/* In individual mode show score next to name; in team mode hide per-player score */}
-        <div style={styles.runsRailNameRow}>
-          <span style={styles.runsRailNameText}>
-            {p.name}
-            {p.id === me.id ? " (You)" : ""}
+    <div style={styles.runsRail}>
+      {/* TEAM MODE HEADER */}
+      {game.teamMode && teamSummary && (
+        <div style={styles.runsRailTeamHeader}>
+          <span style={styles.runsRailTeamSide}>
+            <span style={styles.runsRailTeamLabel}>{teamSummary[0].label}</span>
+            <span style={styles.runsRailTeamScorePill}>{teamSummary[0].score}</span>
           </span>
 
-          {!game.teamMode && (
-            <span style={styles.runsRailScore}>{p.score ?? 0}</span>
-          )}
+          <span style={styles.runsRailTeamDivider}>—</span>
+
+          <span style={{ ...styles.runsRailTeamSide, justifyContent: "flex-end" }}>
+            <span style={styles.runsRailTeamScorePill}>{teamSummary[1].score}</span>
+            <span style={styles.runsRailTeamLabel}>{teamSummary[1].label}</span>
+          </span>
         </div>
+      )}
 
-        {p.openedSets?.length ? (
-          <div style={styles.runsRailSets}>
-            {p.openedSets.map((set, i) => {
-              const isTarget = target?.playerId === p.id && target?.runIndex === i;
-              return (
-                <div
-                  key={i}
-                  onClick={() => {
-                    sfx.click();
-                    setTarget({ playerId: p.id, runIndex: i });
-                  }}
-                  style={{ cursor: "pointer", touchAction: "manipulation" }}
-                  title="Tap to target this run"
-                >
-                  <FanSet set={set} isTarget={isTarget} />
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div style={styles.runsRailEmpty}>—</div>
-        )}
-      </div>
-    ));
-  })()}
-</div>
-</div>
-</div>
-        {/* CENTER */}
-        <div style={styles.midCenter}>
-          <div style={styles.center}>
-            <div style={styles.centerCard}>
-              <div style={styles.centerHeader}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontWeight: 950 }}>Open Stack</span>
-                  <Badge>Pick: {openCount}</Badge>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Badge>Target: {target ? "✓" : "—"}</Badge>
-                </div>
-              </div>
+      {/* PLAYER BLOCKS */}
+      {(() => {
+        const list = game.teamMode
+          ? [...game.players].sort((a, b) => (a.team ?? 0) - (b.team ?? 0))
+          : game.players;
 
-              <div style={styles.centerOpenRow}>
-                {openTopFirst.map((c, i) => (
-                  <div
-                    key={c.id || i}
-                    onClick={() => selectOpen(i)}
-                    style={{
-                      cursor: canSelectOpen ? "pointer" : "not-allowed",
-                      opacity: canSelectOpen ? 1 : 0.45,
-                      flex: "0 0 auto",
-                      touchAction: "manipulation"
-                    }}
-                  >
-                    <MiniCard card={c} selected={i < openCount} sizeStyle={miniCardSizeStyle} />
-                  </div>
-                ))}
-              </div>
+        return list.map((p) => (
+          <div key={p.id} style={styles.runsRailBlock}>
+            <div style={styles.runsRailNameRow}>
+              <span style={styles.runsRailNameText}>
+                {p.name}
+                {p.id === me.id ? " (You)" : ""}
+              </span>
 
-              <div style={styles.centerDrawRowCompact}>
-                <button
-                  style={styles.drawBtnCompact}
-                  disabled={!canDraw}
-                  onClick={() => {
-                    ensureAudio();
-                    sfx.draw();
-                    safeEmit("drawClosed", { room: game.room });
-                  }}
-                  title="Draw 1 from Closed"
-                >
-                  🂠 <span style={styles.drawBtnText}>Closed</span>
-                </button>
-
-                <button
-                  style={styles.drawBtnCompact}
-                  disabled={!canDraw || openCount < 1 || openCount > (game.open?.length || 0)}
-                  onClick={() => {
-                    ensureAudio();
-                    sfx.draw();
-                    safeEmit("drawOpen", { room: game.room, count: openCount });
-                  }}
-                  title="Draw from Open"
-                >
-                  🂡 <span style={styles.drawBtnText}>Open</span>
-                </button>
-              </div>
-
-              
+              {!game.teamMode && <span style={styles.runsRailScore}>{p.score ?? 0}</span>}
             </div>
+
+            {p.openedSets?.length ? (
+              <div style={styles.runsRailSets}>
+                {p.openedSets.map((set, i) => {
+                  const isTarget = target?.playerId === p.id && target?.runIndex === i;
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => {
+                        sfx.click();
+                        setTarget({ playerId: p.id, runIndex: i });
+                      }}
+                      style={{ cursor: "pointer", touchAction: "manipulation" }}
+                      title="Tap to target this run"
+                    >
+                      <FanSet set={set} isTarget={isTarget} />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={styles.runsRailEmpty}>—</div>
+            )}
+          </div>
+        ));
+      })()}
+    </div>
+  </div>
+
+  {/* CENTER */}
+  <div style={styles.midCenter}>
+    <div style={styles.center}>
+      <div style={styles.centerCard}>
+        <div style={styles.centerHeader}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontWeight: 950 }}>Open Stack</span>
+            <Badge>Pick: {openCount}</Badge>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Badge>Target: {target ? "✓" : "—"}</Badge>
           </div>
         </div>
 
-{/* RIGHT */}
-<div style={styles.midSide}>
-  <Seat
-    pos="right"
-    player={pRight}
-    isMe={false}
-    isTurn={game.players[game.turn]?.id === pRight?.id}
-    target={target}
-    setTarget={setTarget}
-    sfxClick={sfx.click}
-    compact={true}
-    hideHeader={true}
-  />
-
-  {/* CHAT */}
-  <div
-    style={{
-      marginTop: 12,
-      width: "100%",
-      borderRadius: 16,
-      border: "1px solid rgba(255,255,255,0.12)",
-      background: "rgba(0,0,0,0.18)",
-      backdropFilter: "blur(10px)",
-      overflow: "hidden",
-      display: "flex",
-      flexDirection: "column",
-    }}
-  >
-    
-    {/* HEADER */}
-    <div
-      style={{
-        padding: "10px 12px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        borderBottom: "1px solid rgba(255,255,255,0.10)",
-      }}
-    >
-      <div style={{ fontWeight: 950 }}>Chat</div>
-      <button
-        onClick={() => setChatOpen(v => !v)}
-        style={styles.chatToggleBtn}
-        type="button"
-      >
-        {chatOpen ? "—" : "+"}
-      </button>
-    </div>
-
-    {chatOpen && (
-      <>
-        {/* BODY */}
-        <div
-          style={{
-            height: 200,
-            overflowY: "auto",
-            padding: 10,
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-          }}
-        >
-          {(chat || []).map((m) => (
-            <div key={m.id}>
-              <div style={{ fontSize: 11, opacity: 0.8, fontWeight: 900 }}>
-                {m.name}
-              </div>
-              <div style={styles.chatBubble}>{m.text}</div>
+        <div style={styles.centerOpenRow}>
+          {openTopFirst.map((c, i) => (
+            <div
+              key={c.id || i}
+              onClick={() => selectOpen(i)}
+              style={{
+                cursor: canSelectOpen ? "pointer" : "not-allowed",
+                opacity: canSelectOpen ? 1 : 0.45,
+                flex: "0 0 auto",
+                touchAction: "manipulation"
+              }}
+            >
+              <MiniCard card={c} selected={i < openCount} sizeStyle={miniCardSizeStyle} />
             </div>
           ))}
-          <div ref={chatEndRef} />
         </div>
 
-        {/* INPUT */}
-        <div style={styles.chatInputRow}>
-          <input
-            style={styles.chatInput}
-            value={chatText}
-            onChange={(e) => setChatText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendChat()}
-            placeholder="Type…"
-          />
+        <div style={styles.centerDrawRowCompact}>
           <button
-            style={styles.chatSendBtn}
-            onClick={sendChat}
-            type="button"
+            style={styles.drawBtnCompact}
+            disabled={!canDraw}
+            onClick={() => {
+              ensureAudio();
+              sfx.draw();
+              safeEmit("drawClosed", { room: game.room });
+            }}
+            title="Draw 1 from Closed"
           >
-            Send
+            🂠 <span style={styles.drawBtnText}>Closed</span>
+          </button>
+
+          <button
+            style={styles.drawBtnCompact}
+            disabled={!canDraw || openCount < 1 || openCount > (game.open?.length || 0)}
+            onClick={() => {
+              ensureAudio();
+              sfx.draw();
+              safeEmit("drawOpen", { room: game.room, count: openCount });
+            }}
+            title="Draw from Open"
+          >
+            🂡 <span style={styles.drawBtnText}>Open</span>
           </button>
         </div>
-      </>
-    )}
+      </div>
+    </div>
   </div>
-</div>  {/* ✅ end RIGHT midSide */}
-</div>
 
+  {/* RIGHT */}
+  <div style={styles.midSide}>
+    <Seat
+      pos="right"
+      player={pRight}
+      isMe={false}
+      isTurn={game.players[game.turn]?.id === pRight?.id}
+      target={target}
+      setTarget={setTarget}
+      sfxClick={sfx.click}
+      compact={true}
+      hideHeader={true}
+    />
+
+    {/* CHAT */}
+    <div style={{ marginTop: 12, ...styles.chatRail }}>
+      <div style={styles.chatHeader}>
+        <div style={{ fontWeight: 950 }}>Chat</div>
+        <button
+          onClick={() => setChatOpen((v) => !v)}
+          style={styles.chatToggleBtn}
+          type="button"
+        >
+          {chatOpen ? "—" : "+"}
+        </button>
+      </div>
+
+      {chatOpen && (
+        <>
+          <div style={{ ...styles.chatBody, height: 200 }}>
+            {(chat || []).map((m) => (
+              <div key={m.id}>
+                <div style={{ fontSize: 11, opacity: 0.8, fontWeight: 900 }}>{m.name}</div>
+                <div style={styles.chatBubble}>{m.text}</div>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          <div style={styles.chatInputRow}>
+            <input
+              style={styles.chatInput}
+              value={chatText}
+              onChange={(e) => setChatText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendChat()}
+              placeholder="Type…"
+            />
+            <button style={styles.chatSendBtn} onClick={sendChat} type="button">
+              Send
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  </div>
+</div>
+</div>
 
     {/* HAND DOCK (outside tableArea so it never stretches center) */}
     <div style={styles.handDock}>
