@@ -1949,23 +1949,15 @@ fanCardCompact: {
   boxShadow: "0 8px 18px rgba(0,0,0,0.16)"
 },
 runsRail: {
-  position: "relative",
+  position: "relative",   // ← THIS IS THE FIX
   width: "100%",
-  left: 10,
-  top: 72,          // below top bar
-  bottom: 84,      // above hand + action bar
-  width: 240,
-
-  zIndex: 300,
-  pointerEvents: "auto",
+  maxWidth: 240,
 
   overflowY: "auto",
   overflowX: "hidden",
   WebkitOverflowScrolling: "touch",
 
-  paddingRight: 6,
   padding: 10,
-
   borderRadius: 14,
   background: "rgba(0,0,0,0.18)",
   border: "1px solid rgba(255,255,255,0.10)",
