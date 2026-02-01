@@ -1076,7 +1076,7 @@ return (
         </div>
 
 {/* RIGHT */}
-<div style={styles.midSide}>
+<div style={{...styles.midSide, justifyContent: "flex-start"}}>
   <div style={{
     width: "100%",
     display: "flex",
@@ -2211,7 +2211,9 @@ chatRail: {
   position: "fixed",
   right: 10,
   top: 72, // below top bar
-  width: 320,
+  width: "100%",
+  alignSelf: "stretch",
+  marginTop: 0,
   height: "min(300px, calc(100svh - 380px))", // ✅ short enough to avoid hand
   zIndex: 550, // below toast (9999) but above table
   pointerEvents: "auto",
