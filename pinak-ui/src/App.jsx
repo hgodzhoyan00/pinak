@@ -317,22 +317,6 @@ export default function App() {
     return () => mq.removeEventListener?.("change", update);
   }, []);
 
-  useEffect(() => {
-  const onChatMsg = (msg) => {
-    setChat((prev) => {
-      // dedupe (prevents double-add if listener accidentally fires twice)
-      if (prev.some((m) => m.id === msg.id)) return prev;
-      return [...prev, msg];
-    });
-  };
-
-  socket.on("chatMsg", onChatMsg);
-
-  return () => {
-    socket.off("chatMsg", onChatMsg);
-  };
-}, []);
-
   /* ---------- SOUND HELPERS ---------- */
   function ensureAudio() {
     if (!audioCtxRef.current) {
