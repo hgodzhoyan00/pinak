@@ -644,16 +644,6 @@ useEffect(() => {
     socket.emit(eventName, payload);
   }
 
-    function sendChat() {
-    const text = chatText.trim();
-    if (!text || !game) return;
-
-    const pid = localStorage.getItem("pinak_pid");
-    socket.emit("sendChat", { room: game.room, pid, name: me?.name, text });
-
-    setChatText("");
-  }
-
   function leaveToLobby() {
   // prevent auto-reconnect into the same room
   localStorage.removeItem("pinak_room");
@@ -1956,6 +1946,7 @@ fanCardCompact: {
 },
 runsRail: {
   position: "relative",
+  width: "100%",
   left: 10,
   top: 72,          // below top bar
   bottom: 84,      // above hand + action bar
