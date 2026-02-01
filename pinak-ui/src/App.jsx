@@ -913,6 +913,7 @@ return (
       <div style={{...styles.rowMid, alignItems: "flex-start"}}>
 {/* LEFT */}
 <div style={styles.midSide}>
+  
   <Seat
     pos="left"
     player={pLeft}
@@ -995,6 +996,7 @@ return (
   })()}
 </div>
 </div>
+</div>
         {/* CENTER */}
         <div style={styles.midCenter}>
           <div style={styles.center}>
@@ -1074,47 +1076,13 @@ return (
   />
 
   {/* CHAT */}
-  <div
-    style={{
-      marginTop: 12,
-      width: "100%",
-      maxWidth: 420,
-      alignSelf: "flex-start",
-      display: "flex",
-      flexDirection: "column",
-      borderRadius: 18,
-      border: "1px solid rgba(255,255,255,0.12)",
-      background: "rgba(0,0,0,0.18)",
-      backdropFilter: "blur(10px)",
-      overflow: "hidden"
-    }}
-  >
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "10px 12px",
-        borderBottom: "1px solid rgba(255,255,255,0.10)"
-      }}
-    >
+  <div style={styles.chatRail}>
+    <div style={styles.chatHeader}>
       <div style={{ fontWeight: 950 }}>Chat</div>
-
       <button
         type="button"
         onClick={() => setChatOpen((v) => !v)}
-        style={{
-          width: 44,
-          height: 36,
-          borderRadius: 12,
-          border: "1px solid rgba(255,255,255,0.18)",
-          background: "rgba(0,0,0,0.18)",
-          color: "rgba(255,255,255,0.92)",
-          fontWeight: 950,
-          cursor: "pointer"
-        }}
-        aria-label="Toggle chat"
-        title="Toggle chat"
+        style={styles.chatToggleBtn}
       >
         {chatOpen ? "—" : "+"}
       </button>
@@ -1122,18 +1090,9 @@ return (
 
     {chatOpen && (
       <>
-        <div
-          style={{
-            height: 200,
-            overflowY: "auto",
-            padding: 10,
-            display: "flex",
-            flexDirection: "column",
-            gap: 8
-          }}
-        >
+        <div style={styles.chatBody}>
           {(chat || []).map((m) => {
-            const isMeMsg = !!(me?.pid && m?.pid && m.pid === me.pid);
+            const isMeMsg = me?.pid === m?.pid;
             return (
               <div
                 key={m.id}
@@ -1144,67 +1103,27 @@ return (
                 }}
               >
                 <div style={{ fontSize: 11, opacity: 0.8, fontWeight: 900 }}>
-                  {m.name || "?"}
+                  {m.name}
                 </div>
-
-                <div
-                  style={{
-                    maxWidth: "92%",
-                    padding: "8px 10px",
-                    borderRadius: 14,
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    background: "rgba(0,0,0,0.18)",
-                    color: "rgba(255,255,255,0.92)",
-                    wordBreak: "break-word"
-                  }}
-                >
-                  {m.text}
-                </div>
+                <div style={styles.chatBubble}>{m.text}</div>
               </div>
             );
           })}
           <div ref={chatEndRef} />
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            padding: 10,
-            borderTop: "1px solid rgba(255,255,255,0.10)"
-          }}
-        >
+        <div style={styles.chatInputRow}>
           <input
+            style={styles.chatInput}
             value={chatText}
             onChange={(e) => setChatText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendChat()}
             placeholder="Type…"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") sendChat();
-            }}
-            style={{
-              flex: 1,
-              height: 40,
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.14)",
-              background: "rgba(0,0,0,0.18)",
-              color: "rgba(255,255,255,0.92)",
-              padding: "0 12px",
-              outline: "none"
-            }}
           />
           <button
-            type="button"
+            style={styles.chatSendBtn}
             onClick={sendChat}
-            style={{
-              height: 40,
-              padding: "0 14px",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.18)",
-              background: "rgba(0,0,0,0.18)",
-              color: "rgba(255,255,255,0.92)",
-              fontWeight: 950,
-              cursor: "pointer"
-            }}
+            type="button"
           >
             Send
           </button>
@@ -1213,7 +1132,7 @@ return (
     )}
   </div>
 </div>
-      </div>      
+         
       {/* bottom row exists but you can leave it empty */}
       
     </div>
