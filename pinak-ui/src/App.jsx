@@ -1077,6 +1077,14 @@ return (
 
 {/* RIGHT */}
 <div style={styles.midSide}>
+  <div style={{
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "stretch",
+    justifyContent: "flex-start",
+  }}
+></div>
   <Seat
     pos="right"
     player={pRight}
@@ -1095,7 +1103,7 @@ return (
       marginTop: 12,
       width: "100%",
       maxWidth: 420,
-      alignSelf: "flex-end",
+      alignSelf: "flex-start",
       // IMPORTANT: keep it in normal flow (no fixed/absolute)
       display: "flex",
       flexDirection: "column",
@@ -1231,6 +1239,7 @@ return (
   </div>
 </div>
       </div>
+      
       {/* bottom row exists but you can leave it empty */}
       
     </div>
