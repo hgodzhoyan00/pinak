@@ -1079,6 +1079,7 @@ return (
       flexDirection: "column",
     }}
   >
+    </div>
     {/* HEADER */}
     <div
       style={{
@@ -1143,10 +1144,8 @@ return (
       </>
     )}
   </div>
-</div>         
-      {/* bottom row exists but you can leave it empty */}
-      
-    </div>
+</div>  {/* ✅ end RIGHT midSide */}
+
 
     {/* HAND DOCK (outside tableArea so it never stretches center) */}
     <div style={styles.handDock}>
@@ -1314,6 +1313,7 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
   );
 })()}
     </div>
+    
 
     {/* TOAST */}
       {toast && <div style={styles.toast}>{toast}</div>}
