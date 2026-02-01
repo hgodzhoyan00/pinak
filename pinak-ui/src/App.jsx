@@ -1060,15 +1060,7 @@ return (
         </div>
 
 {/* RIGHT */}
-<div style={{...styles.midSide, justifyContent: "flex-start"}}>
-  <div style={{
-    width: "100%",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "stretch",
-    justifyContent: "flex-start",
-  }}
-></div>
+<div style={styles.midSide}>
   <Seat
     pos="right"
     player={pRight}
@@ -1081,14 +1073,13 @@ return (
     hideHeader={true}
   />
 
-  {/* CHAT (lives inside right column so it can't overlap center/hand) */}
+  {/* CHAT */}
   <div
     style={{
       marginTop: 12,
       width: "100%",
       maxWidth: 420,
       alignSelf: "flex-start",
-      // IMPORTANT: keep it in normal flow (no fixed/absolute)
       display: "flex",
       flexDirection: "column",
       borderRadius: 18,
@@ -1133,7 +1124,7 @@ return (
       <>
         <div
           style={{
-            height: 200,              // ✅ makes it shorter so it won't cover hand taps
+            height: 200,
             overflowY: "auto",
             padding: 10,
             display: "flex",
@@ -1222,8 +1213,7 @@ return (
     )}
   </div>
 </div>
-      </div>
-      
+      </div>      
       {/* bottom row exists but you can leave it empty */}
       
     </div>
