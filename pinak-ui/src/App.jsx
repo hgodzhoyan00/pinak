@@ -1395,6 +1395,7 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
 /* ---------- STYLES ---------- */
   const LEFT_RAIL_W = 240;
   const RIGHT_RAIL_W = 240;
+  const RAIL_GAP = 8;
 
 const styles = {
   table: {
