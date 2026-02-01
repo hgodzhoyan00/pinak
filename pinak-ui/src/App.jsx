@@ -1079,7 +1079,7 @@ return (
       flexDirection: "column",
     }}
   >
-    </div>
+    
     {/* HEADER */}
     <div
       style={{
@@ -1145,6 +1145,7 @@ return (
     )}
   </div>
 </div>  {/* ✅ end RIGHT midSide */}
+</div>
 
 
     {/* HAND DOCK (outside tableArea so it never stretches center) */}
