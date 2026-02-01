@@ -926,7 +926,7 @@ return (
         />
       </div>
 
-      <div style={styles.rowMid}>
+      <div style={{...styles.rowMid, alignItems: "flex-start"}}>
 {/* LEFT */}
 <div style={styles.midSide}>
   <Seat
