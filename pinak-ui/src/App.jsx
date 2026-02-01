@@ -1558,6 +1558,12 @@ tableArea: {
     minHeight: 0
   },
 
+  midCenter: {
+  minWidth: 0,          // ✅ allows center column to shrink instead of overflowing
+  display: "flex",
+  flexDirection: "column",
+},
+
 midSide: {
   minWidth: 0,
   display: "flex",
