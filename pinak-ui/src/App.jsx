@@ -978,68 +978,66 @@ return (
     </div>
   </div>
 
-  {/* CENTER */}
-  <div style={styles.midCenter}>
-    <div style={styles.center}>
-      <div style={styles.centerCard}>
-        <div style={styles.centerHeader}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontWeight: 950 }}>Open Stack</span>
-            <Badge>Pick: {openCount}</Badge>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Badge>Target: {target ? "✓" : "—"}</Badge>
-          </div>
+{/* CENTER */}
+<div style={styles.midCenter}>
+  <div style={styles.center}>
+    <div style={styles.centerCard}>
+      <div style={styles.centerHeader}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontWeight: 950 }}>Open Stack</span>
+          <Badge>Pick: {openCount}</Badge>
         </div>
 
-        <div style={styles.centerOpenRow}>
-          {openTopFirst.map((c, i) => (
-            <div
-              key={c.id || i}
-              onClick={() => selectOpen(i)}
-              style={{
-                cursor: canSelectOpen ? "pointer" : "not-allowed",
-                opacity: canSelectOpen ? 1 : 0.45,
-                flex: "0 0 auto",
-                touchAction: "manipulation"
-              }}
-            >
-              <MiniCard card={c} selected={i < openCount} sizeStyle={miniCardSizeStyle} />
-            </div>
-          ))}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Badge>Target: {target ? "✓" : "—"}</Badge>
         </div>
+      </div>
 
-        <div style={styles.centerDrawRowCompact}>
-          <button
-            style={styles.drawBtnCompact}
-            disabled={!canDraw}
-            onClick={() => {
-              ensureAudio();
-              sfx.draw();
-              safeEmit("drawClosed", { room: game.room });
+      <div style={styles.centerOpenRow}>
+        {openTopFirst.map((c, i) => (
+          <div
+            key={c.id || i}
+            onClick={() => selectOpen(i)}
+            style={{
+              cursor: canSelectOpen ? "pointer" : "not-allowed",
+              opacity: canSelectOpen ? 1 : 0.45,
+              flex: "0 0 auto",
+              touchAction: "manipulation",
             }}
-            title="Draw 1 from Closed"
           >
-            🂠 <span style={styles.drawBtnText}>Closed</span>
-          </button>
+            <MiniCard card={c} selected={i < openCount} sizeStyle={miniCardSizeStyle} />
+          </div>
+        ))}
+      </div>
 
-          <button
-            style={styles.drawBtnCompact}
-            disabled={!canDraw || openCount < 1 || openCount > (game.open?.length || 0)}
-            onClick={() => {
-              ensureAudio();
-              sfx.draw();
-              safeEmit("drawOpen", { room: game.room, count: openCount });
-            }}
-            title="Draw from Open"
-          >
-            🂡 <span style={styles.drawBtnText}>Open</span>
-          </button>
-        </div>
+      <div style={styles.centerDrawRowCompact}>
+        <button
+          style={styles.drawBtnCompact}
+          disabled={!canDraw}
+          onClick={() => {
+            ensureAudio();
+            sfx.draw();
+            safeEmit("drawClosed", { room: game.room });
+          }}
+        >
+          🂠 <span style={styles.drawBtnText}>Closed</span>
+        </button>
+
+        <button
+          style={styles.drawBtnCompact}
+          disabled={!canDraw || openCount < 1 || openCount > (game.open?.length || 0)}
+          onClick={() => {
+            ensureAudio();
+            sfx.draw();
+            safeEmit("drawOpen", { room: game.room, count: openCount });
+          }}
+        >
+          🂡 <span style={styles.drawBtnText}>Open</span>
+        </button>
       </div>
     </div>
   </div>
-
+</div>
   {/* RIGHT */}
   <div style={styles.midSide}>
     <Seat
@@ -1055,7 +1053,7 @@ return (
     />
 
     {/* CHAT */}
-    <div style={{ marginTop: 12, ...styles.chatRail }}>
+    <div style={{ marginTop: 12, ...styles.chatRail, ...(chatOpen ? null : styles.chatRailCollapsed) }}> 
       <div style={styles.chatHeader}>
         <div style={{ fontWeight: 950 }}>Chat</div>
         <button
@@ -2185,6 +2183,11 @@ chatRailFixed: {
 
   display: "flex",
   flexDirection: "column"
+},
+
+chatRailCollapsed: {
+  bottom: "auto",   // stops fixed rail from stretching
+  height: 56,       // just the header height
 },
 
 };
