@@ -1949,7 +1949,7 @@ fanCardCompact: {
   boxShadow: "0 8px 18px rgba(0,0,0,0.16)"
 },
 runsRail: {
-  position: "relative",   // ← THIS IS THE FIX
+  position: "relative",
   width: "100%",
   maxWidth: 240,
 
