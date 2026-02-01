@@ -1493,16 +1493,19 @@ const styles = {
 
   checkboxRow: { display: "flex", alignItems: "center", marginTop: 4 },
 
-  tableArea: {
-    maxWidth: 1100,
-    margin: "0 auto",
-    padding: "8px 12px",
-    display: "grid",
-    gridTemplateRows: "auto 1fr auto",
-    gap: 8,
-    height: "calc(100svh - 220px)",
-    minHeight: 0
-  },
+tableArea: {
+  // ✅ take only the space between rails
+  width: `calc(100% - ${LEFT_RAIL_W + RIGHT_RAIL_W + RAIL_GAP * 2}px)`,
+  marginLeft: LEFT_RAIL_W + RAIL_GAP,
+  marginRight: RIGHT_RAIL_W + RAIL_GAP,
+
+  padding: "8px 12px",
+  display: "grid",
+  gridTemplateRows: "auto 1fr auto",
+  gap: 8,
+  height: "calc(100svh - 220px)",
+  minHeight: 0
+},
 
   center: { position: "relative", width: "100%" },
 
@@ -1952,7 +1955,7 @@ fanCardCompact: {
   boxShadow: "0 8px 18px rgba(0,0,0,0.16)"
 },
 runsRail: {
-  position: "fixed",
+  position: "relative",
   left: 10,
   top: 72,          // below top bar
   bottom: 84,      // above hand + action bar
