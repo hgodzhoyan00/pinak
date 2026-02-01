@@ -1147,59 +1147,6 @@ return (
       {/* bottom row exists but you can leave it empty */}
       
     </div>
-{/* RIGHT CHAT RAIL (fixed, does NOT affect center layout) */}
-<div style={styles.chatRailFixed}>
-  <div style={styles.chatHeader}>
-    <div style={{ fontWeight: 950 }}>Chat</div>
-    <button
-      style={styles.chatToggleBtn}
-      onClick={() => setChatOpen((v) => !v)}
-      type="button"
-    >
-      {chatOpen ? "—" : "+"}
-    </button>
-  </div>
-
-  {chatOpen && (
-    <>
-      <div style={styles.chatBody}>
-        {(chat || []).map((m) => {
-          const isMeMsg = me?.pid && m?.pid && m.pid === me.pid;
-          return (
-            <div
-              key={m.id}
-              style={{
-                marginBottom: 8,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: isMeMsg ? "flex-end" : "flex-start"
-              }}
-            >
-              <div style={{ fontSize: 11, opacity: 0.8, fontWeight: 900 }}>
-                {m.name || "?"}
-              </div>
-              <div style={styles.chatBubble}>{m.text}</div>
-            </div>
-          );
-        })}
-        <div ref={chatEndRef} />
-      </div>
-
-      <div style={styles.chatInputRow}>
-        <input
-          style={styles.chatInput}
-          value={chatText}
-          onChange={(e) => setChatText(e.target.value)}
-          placeholder="Type…"
-          onKeyDown={(e) => e.key === "Enter" && sendChat()}
-        />
-        <button style={styles.chatSendBtn} onClick={sendChat} type="button">
-          Send
-        </button>
-      </div>
-    </>
-  )}
-</div>
 
     {/* HAND DOCK (outside tableArea so it never stretches center) */}
     <div style={styles.handDock}>
@@ -2027,14 +1974,17 @@ fanCardCompact: {
   boxShadow: "0 8px 18px rgba(0,0,0,0.16)"
 },
 runsRail: {
-  position: "relative",
-  width: "100%",
-  maxWidth: 240,
-
+  position: "fixed",
+  left: 10,
+  top: 72,
+  bottom: 84,
+  width: 240,
+  zIndex: 800,  // ✅ bump this up
+  pointerEvents: "auto",
   overflowY: "auto",
   overflowX: "hidden",
   WebkitOverflowScrolling: "touch",
-
+  paddingRight: 6,
   padding: 10,
   borderRadius: 14,
   background: "rgba(0,0,0,0.18)",
