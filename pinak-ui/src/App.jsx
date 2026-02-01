@@ -1279,17 +1279,16 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
     </button>
   </div>
 
-  {chatOpen && (
+  {chatOpen ? (
     <>
       <div style={styles.chatBody}>
         {(chat || []).map((m) => {
           const isMeMsg = !!(me?.pid && m?.pid && m.pid === me.pid);
-
           return (
             <div
               key={m.id}
               style={{
-                marginBottom: 8,
+                marginBottom: 10,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: isMeMsg ? "flex-end" : "flex-start"
@@ -1299,13 +1298,10 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
                 {m.name || "?"}
               </div>
 
-              <div style={{ ...styles.chatBubble }}>
-                {m.text}
-              </div>
+              <div style={styles.chatBubble}>{m.text}</div>
             </div>
           );
         })}
-
         <div ref={chatEndRef} />
       </div>
 
@@ -1324,6 +1320,11 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
         </button>
       </div>
     </>
+  ) : (
+    // ✅ collapsed state still has a “body” so the rail doesn’t look broken
+    <div style={{ padding: 10, opacity: 0.7, fontWeight: 800 }}>
+      Closed
+    </div>
   )}
 </div>
 
@@ -2122,53 +2123,61 @@ leaveBtn: {
 chatRail: {
   position: "fixed",
   right: 10,
-  top: 84, // below top bar
-  width: 280,
-
-  // Key fix: use a real height instead of bottom-based sizing
-  height: "min(320px, calc(100svh - 360px))",
-  minHeight: 56, // so the header always shows
-  maxHeight: 340,
-
-  zIndex: 1200, // above center/hand layers (handDock is 600, stickyBar is 999)
+  top: 72, // below top bar
+  width: 320,
+  height: "min(300px, calc(100svh - 380px))", // ✅ short enough to avoid hand
+  zIndex: 550, // below toast (9999) but above table
   pointerEvents: "auto",
+  bottom: 300,
+  height: "auto",
+
+  display: "flex",
+  flexDirection: "column",
 
   borderRadius: 14,
   background: "rgba(0,0,0,0.18)",
   border: "1px solid rgba(255,255,255,0.10)",
   boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
   backdropFilter: "blur(10px)",
-
-  display: "flex",
-  flexDirection: "column",
   overflow: "hidden"
 },
 
 chatHeader: {
+  padding: "10px 12px",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  padding: "10px 10px",
   borderBottom: "1px solid rgba(255,255,255,0.10)"
 },
 
 chatToggleBtn: {
-  width: 36,
+  width: 40,
   height: 32,
   borderRadius: 10,
-  border: "1px solid rgba(255,255,255,0.18)",
-  background: "rgba(0,0,0,0.22)",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "rgba(0,0,0,0.25)",
   color: "#fff",
   fontWeight: 950,
+  fontSize: 18,
   cursor: "pointer",
   touchAction: "manipulation"
 },
 
 chatBody: {
-  flex: 1,
+  flex: 1,                 // ✅ THIS is what prevents the “header-only” collapse
   overflowY: "auto",
-  WebkitOverflowScrolling: "touch",
-  padding: 10
+  padding: 10,
+  WebkitOverflowScrolling: "touch"
+},
+
+chatBubble: {
+  maxWidth: "85%",
+  padding: "8px 10px",
+  borderRadius: 12,
+  background: "rgba(255,255,255,0.10)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  fontWeight: 800,
+  lineHeight: 1.2
 },
 
 chatInputRow: {
@@ -2180,36 +2189,26 @@ chatInputRow: {
 
 chatInput: {
   flex: 1,
-  height: 36,
+  height: 38,
   borderRadius: 10,
-  border: "1px solid rgba(255,255,255,0.18)",
+  border: "1px solid rgba(255,255,255,0.14)",
   background: "rgba(0,0,0,0.22)",
   color: "#fff",
   padding: "0 10px",
-  outline: "none"
+  outline: "none",
+  fontSize: 14
 },
 
 chatSendBtn: {
-  height: 36,
-  padding: "0 12px",
+  width: 64,
+  height: 38,
   borderRadius: 10,
-  border: "1px solid rgba(255,255,255,0.18)",
-  background: "rgba(0,0,0,0.28)",
+  border: "1px solid rgba(255,255,255,0.14)",
+  background: "rgba(0,0,0,0.30)",
   color: "#fff",
   fontWeight: 950,
   cursor: "pointer",
   touchAction: "manipulation"
-},
-
-chatBubble: {
-  maxWidth: 220,
-  padding: "8px 10px",
-  borderRadius: 12,
-  background: "rgba(255,255,255,0.10)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  fontWeight: 800,
-  lineHeight: 1.25,
-  wordBreak: "break-word"
 },
 
 };
