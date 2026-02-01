@@ -1470,6 +1470,7 @@ tableArea: {
   marginRight: RIGHT_RAIL_W + RAIL_GAP,
 
   padding: "8px 12px",
+  paddingRight: 272, 
   display: "grid",
   gridTemplateRows: "auto 1fr auto",
   gap: 8,
@@ -2078,21 +2079,23 @@ leaveBtn: {
 },
 
 chatRail: {
-  width: "100%",
+  position: "fixed",
+  right: 10,
+  top: 72,        // below top bar
+  bottom: 84,     // above action bar
+  width: 260,
+  zIndex: 350,
+  pointerEvents: "auto",
+
   borderRadius: 16,
   background: "rgba(0,0,0,0.18)",
   border: "1px solid rgba(255,255,255,0.12)",
   boxShadow: "0 10px 30px rgba(0,0,0,0.28)",
+  backdropFilter: "blur(10px)",
   overflow: "hidden",
 
-  // ✅ critical: don't float in the middle
-  position: "relative",
-  top: "auto",
-  right: "auto",
-  transform: "none",
-
-  // ✅ keep it from falling into the hand
-  maxHeight: "calc(100vh - 340px)",
+  display: "flex",
+  flexDirection: "column",
 },
 
 chatHeader: {
