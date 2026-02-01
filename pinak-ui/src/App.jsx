@@ -1064,8 +1064,86 @@ return (
     compact={true}
     hideHeader={true}
   />
-</div>
-         
+
+  {/* CHAT */}
+  <div
+    style={{
+      marginTop: 12,
+      width: "100%",
+      borderRadius: 16,
+      border: "1px solid rgba(255,255,255,0.12)",
+      background: "rgba(0,0,0,0.18)",
+      backdropFilter: "blur(10px)",
+      overflow: "hidden",
+      display: "flex",
+      flexDirection: "column",
+    }}
+  >
+    {/* HEADER */}
+    <div
+      style={{
+        padding: "10px 12px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        borderBottom: "1px solid rgba(255,255,255,0.10)",
+      }}
+    >
+      <div style={{ fontWeight: 950 }}>Chat</div>
+      <button
+        onClick={() => setChatOpen(v => !v)}
+        style={styles.chatToggleBtn}
+        type="button"
+      >
+        {chatOpen ? "—" : "+"}
+      </button>
+    </div>
+
+    {chatOpen && (
+      <>
+        {/* BODY */}
+        <div
+          style={{
+            height: 200,
+            overflowY: "auto",
+            padding: 10,
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}
+        >
+          {(chat || []).map((m) => (
+            <div key={m.id}>
+              <div style={{ fontSize: 11, opacity: 0.8, fontWeight: 900 }}>
+                {m.name}
+              </div>
+              <div style={styles.chatBubble}>{m.text}</div>
+            </div>
+          ))}
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* INPUT */}
+        <div style={styles.chatInputRow}>
+          <input
+            style={styles.chatInput}
+            value={chatText}
+            onChange={(e) => setChatText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendChat()}
+            placeholder="Type…"
+          />
+          <button
+            style={styles.chatSendBtn}
+            onClick={sendChat}
+            type="button"
+          >
+            Send
+          </button>
+        </div>
+      </>
+    )}
+  </div>
+</div>         
       {/* bottom row exists but you can leave it empty */}
       
     </div>
