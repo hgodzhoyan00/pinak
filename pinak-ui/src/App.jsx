@@ -2101,9 +2101,9 @@ chatRail: {
   position: "fixed",
   right: 10,
   top: 72,          // below top bar
-  bottom: 310,      // ✅ keeps clear of handDock + action bar
+  bottom: 320,      // ✅ keeps clear of handDock + action bar
   width: 260,
-  zIndex: 350,
+  zIndex: 800,
   pointerEvents: "auto",
 
   borderRadius: 14,
@@ -2136,6 +2136,7 @@ chatToggleBtn: {
   color: "#fff",
   fontWeight: 950,
   cursor: "pointer",
+  pointerEvents: "auto",
   touchAction: "manipulation"
 },
 
@@ -2147,7 +2148,7 @@ chatBody: {
 },
 
 chatBubble: {
-  maxWidth: "90%",
+  maxWidth: "200",
   padding: "8px 10px",
   borderRadius: 12,
   background: "rgba(0,0,0,0.35)",
@@ -2165,20 +2166,18 @@ chatInputRow: {
 
 chatInput: {
   flex: 1,
-  height: 38,
-  borderRadius: 12,
+  height: 36,
+  borderRadius: 10,
   border: "1px solid rgba(255,255,255,0.18)",
   background: "rgba(0,0,0,0.28)",
   color: "#fff",
   padding: "0 10px",
   outline: "none",
-  touchAction: "manipulation"
 },
 
 chatSendBtn: {
-  width: 64,
-  height: 38,
-  borderRadius: 12,
+  height: 36,
+  borderRadius: 10,
   border: "1px solid rgba(255,255,255,0.18)",
   background: "rgba(0,0,0,0.28)",
   color: "#fff",
