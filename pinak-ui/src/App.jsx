@@ -283,6 +283,8 @@ export default function App() {
   const wentOutSentRef = useRef(false);
   const toastTimerRef = useRef(null);
 
+  const lastChatRoomRef = useRef(null); // ✅ ADD HERE
+
   const [isLandscape, setIsLandscape] = useState(false);
 
   const [chatOpen, setChatOpen] = useState(true);
@@ -380,8 +382,10 @@ useEffect(() => {
     setGame(state);
 
     // pull history once when we first get a state for a room
-    if (state?.room) socket.emit("getChat", { room: state.room });
-
+    if (state?.room && lastChatRoomRef.current !== state.room) {
+    lastChatRoomRef.current = state.room;
+    socket.emit("getChat", { room: state.room });
+}
     const meNext = state.players.find((p) => p.id === socket.id);
     const isMyTurnNext = state.players[state.turn]?.id === socket.id;
 
@@ -422,23 +426,24 @@ useEffect(() => {
   socket.on("gameState", onGameState);
   socket.on("errorMsg", onErrorMsg);
   
-  // --- CHAT LISTENERS (FIXED) ---
-  const onChatHistory = ({ chat: hist } = {}) => {
-    setChat(Array.isArray(hist) ? hist.slice(-60) : []);
-  };
+const onChatHistory = (payload = {}) => {
+  const hist = payload.chat;
+  setChat(Array.isArray(hist) ? hist.slice(-60) : []);
+};
 
-  const onChatMsg = (payload) => {
-    const msg = payload?.msg ?? payload; // supports {msg} or msg directly
-    if (!msg) return;
+const onChatMsg = (payload) => {
+  // supports server sending { msg } OR msg directly
+  const msg = payload?.msg ?? payload;
+  if (!msg) return;
 
-    setChat((prev) => {
-      if (msg.id && prev.some((m) => m.id === msg.id)) return prev; // dedupe
-      return [...prev, msg].slice(-60);
-    });
-  };
+  setChat((prev) => {
+    if (msg.id && prev.some((m) => m.id === msg.id)) return prev; // dedupe
+    return [...prev, msg].slice(-60);
+  });
+};
 
-  socket.on("chatHistory", onChatHistory);
-  socket.on("chatMsg", onChatMsg);
+socket.on("chatHistory", onChatHistory);
+socket.on("chatMsg", onChatMsg);
 
   return () => {
     socket.off("connect", onConnect);
