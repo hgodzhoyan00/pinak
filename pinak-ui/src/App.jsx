@@ -293,6 +293,52 @@ export default function App() {
   const chatEndRef = useRef(null);
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
+  const [oneLeftBanner, setOneLeftBanner] = useState({ show: false, text: "" });
+  const oneLeftTimerRef = useRef(null);
+
+// Track previous hand sizes so we can detect "just hit 1"
+  const prevHandLensRef = useRef(new Map());
+
+  useEffect(() => {
+  const players = game?.players || [];
+  if (!players.length) return;
+
+  const prev = prevHandLensRef.current;
+  const hitNames = [];
+
+  for (const p of players) {
+    const key = p.pid || p.id; // stable enough
+    const currLen = p.hand?.length ?? 0;
+
+    // If we have a previous value and we JUST transitioned to exactly 1
+    const hadPrev = prev.has(key);
+    const prevLen = hadPrev ? prev.get(key) : null;
+
+    if (hadPrev && prevLen !== 1 && currLen === 1) {
+      hitNames.push(p.name || "Player");
+    }
+
+    // update snapshot for next tick
+    prev.set(key, currLen);
+  }
+
+  if (hitNames.length === 0) return;
+
+  // If multiple players happen to hit 1 at same update, show them all.
+  const text =
+    hitNames.length === 1
+      ? `⚠️ ${hitNames[0]} has 1 card in hand`
+      : `⚠️ ${hitNames.join(", ")} have 1 card in hand`;
+
+  setOneLeftBanner({ show: true, text });
+
+  if (oneLeftTimerRef.current) window.clearTimeout(oneLeftTimerRef.current);
+  oneLeftTimerRef.current = window.setTimeout(() => {
+    setOneLeftBanner({ show: false, text: "" });
+    oneLeftTimerRef.current = null;
+  }, 30_000);
+}, [game?.players]);
+
   function sendChat() {
   const text = chatText.trim();
   if (!text || !game) return;
@@ -405,9 +451,16 @@ useEffect(() => {
     setGame(state);
 
     // pull history once when we first get a state for a room
-    if (state?.room && lastChatRoomRef.current !== state.room) {
-    lastChatRoomRef.current = state.room;
-    socket.emit("getChat", { room: state.room });
+if (state?.room && lastChatRoomRef.current !== state.room) {
+  lastChatRoomRef.current = state.room;
+
+  // ✅ reset 1-card banner tracker when switching rooms
+  prevHandLensRef.current = new Map();
+  if (oneLeftTimerRef.current) window.clearTimeout(oneLeftTimerRef.current);
+  oneLeftTimerRef.current = null;
+  setOneLeftBanner({ show: false, text: "" });
+
+  socket.emit("getChat", { room: state.room });
 }
     const meNext = state.players.find((p) => p.id === socket.id);
     const isMyTurnNext = state.players[state.turn]?.id === socket.id;
@@ -693,6 +746,14 @@ useEffect(() => {
   setOpenCount(0);
   setError("");
   setToast("");
+  
+    // ✅ reset 1-card banner tracker + timer
+  prevHandLensRef.current = new Map();
+
+  if (oneLeftTimerRef.current) window.clearTimeout(oneLeftTimerRef.current);
+  oneLeftTimerRef.current = null;
+
+  setOneLeftBanner({ show: false, text: "" });
 }
 
   /* ---------- CONNECTION ---------- */
@@ -860,6 +921,12 @@ return (
         {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
           <div style={styles.turnPillTop}>🔥 YOUR TURN</div>
         )}
+
+        {oneLeftBanner.show && (
+  <div style={styles.oneLeftBanner}>
+    {oneLeftBanner.text}
+  </div>
+)}
       </div>
 
 <div style={styles.topBarRight}>
@@ -2205,5 +2272,23 @@ chatSendBtn: {
   cursor: "pointer",
   touchAction: "manipulation",
   boxSizing: "border-box",
+},
+
+oneLeftBanner: {
+  position: "fixed",
+  left: "50%",
+  transform: "translateX(-50%)",
+  top: 78, // tweak if needed
+  zIndex: 950,
+  background: "rgba(0,0,0,0.82)",
+  border: "1px solid rgba(255,255,255,0.16)",
+  color: "#fff",
+  padding: "10px 14px",
+  borderRadius: 999,
+  fontWeight: 950,
+  fontSize: 13,
+  maxWidth: "min(520px, 92vw)",
+  textAlign: "center",
+  pointerEvents: "none"
 },
 };
