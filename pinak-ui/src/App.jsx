@@ -1054,7 +1054,7 @@ return (
     />
 
     {/* CHAT */}
-    <div style={{ marginTop: 12, ...styles.chatRail, ...(chatOpen ? null : styles.chatRailCollapsed) }}> 
+    <div style={styles.chatRail}> 
       <div style={styles.chatHeader}>
         <div style={{ fontWeight: 950 }}>Chat</div>
         <button
@@ -1937,7 +1937,7 @@ runsRail: {
   top: 72,
   bottom: 84,
   width: 240,
-  zIndex: 800,  // ✅ bump this up
+  zIndex: 300,  // ✅ bump this up
   pointerEvents: "none",
   overflowY: "auto",
   overflowX: "hidden",
@@ -2082,22 +2082,23 @@ leaveBtn: {
 
 chatRail: {
   position: "fixed",
-  right: 10,
-  top: 72,        // below top bar
-  bottom: 84,     // above action bar
-  width: 260,
-  zIndex: 350,
-  pointerEvents: "auto",
+  right: 10,      // ✅ pushes it to the right edge
+  top: 72,        // ✅ below top bar (match your runsRail top)
+  bottom: 84,     // ✅ above action bar/hand (match your runsRail bottom)
+  width: 240,     // ✅ same as runsRail (left rail)
 
-  borderRadius: 16,
-  background: "rgba(0,0,0,0.18)",
-  border: "1px solid rgba(255,255,255,0.12)",
-  boxShadow: "0 10px 30px rgba(0,0,0,0.28)",
-  backdropFilter: "blur(10px)",
-  overflow: "hidden",
+  zIndex: 300,
+  pointerEvents: "auto",
 
   display: "flex",
   flexDirection: "column",
+  overflow: "hidden",
+
+  borderRadius: 14,
+  background: "rgba(0,0,0,0.18)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
+  backdropFilter: "blur(10px)",
 },
 
 chatHeader: {
