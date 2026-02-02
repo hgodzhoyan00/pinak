@@ -987,7 +987,6 @@ return (
           <span style={{ fontWeight: 950 }}>Open Stack</span>
           <Badge>Pick: {openCount}</Badge>
         </div>
-
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Badge>Target: {target ? "✓" : "—"}</Badge>
         </div>
@@ -1019,6 +1018,7 @@ return (
             sfx.draw();
             safeEmit("drawClosed", { room: game.room });
           }}
+          title="Draw 1 from Closed"
         >
           🂠 <span style={styles.drawBtnText}>Closed</span>
         </button>
@@ -1031,6 +1031,7 @@ return (
             sfx.draw();
             safeEmit("drawOpen", { room: game.room, count: openCount });
           }}
+          title="Draw from Open"
         >
           🂡 <span style={styles.drawBtnText}>Open</span>
         </button>
@@ -1936,9 +1937,10 @@ runsRail: {
   bottom: 84,
   width: 240,
   zIndex: 800,  // ✅ bump this up
-  pointerEvents: "auto",
+  pointerEvents: "none",
   overflowY: "auto",
   overflowX: "hidden",
+  right: "auto",
   WebkitOverflowScrolling: "touch",
   paddingRight: 6,
   padding: 10,
@@ -1950,6 +1952,7 @@ runsRail: {
 },
 
 runsRailBlock: {
+  pointerEvents: "auto",
   marginBottom: 10,
   background: "rgba(255,255,255,0.06)",
   border: "1px solid rgba(255,255,255,0.10)",
