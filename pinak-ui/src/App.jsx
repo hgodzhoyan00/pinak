@@ -1178,21 +1178,18 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
           const t = fanCountLocal <= 1 ? 0.5 : idx / (fanCountLocal - 1);
           const rot = (t - 0.5) * 2 * fanMax;
 
-          // Center position across the fan
-          const edge = (t - 0.5) * 2; // -1 left → +1 right
-
-          // ✅ bias mostly on the RIGHT side
-          const rightBias = Math.max(0, edge) * 22; // try 14 (if still off: 16, if too much: 12)
-          const leftBias  = Math.min(0, edge) * 3;  // tiny correction on left (keeps it stable)
-
-          // base visual position (DO NOT bias this)
+          // base visual x position (card stays here)
           const baseX = (t - 0.5) * spreadTotal;
 
-          // right-side lane nudge (hitbox only)
-          const laneNudge = Math.max(0, edge) * 24; // start 24, try 32 if needed
+          // right side = +1, left side = -1
+          const edge = (t - 0.5) * 2;
 
-          // the lane moves, but the card will be counter-shifted back
+          // ✅ hitbox lane nudge (ONLY affects hitbox positioning)
+          const laneNudge = Math.max(0, edge) * 28; // start 28, try 36 if needed
+
+          // lane is moved, but card will be counter-shifted back
           const laneX = baseX + laneNudge;
+          const cardOffsetX = -laneNudge;
 
           // Visual arc only
           const drop = Math.abs(rot) * dropFactor;
@@ -1224,7 +1221,7 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
                 position: "absolute",
                 left: "50%",
                 bottom: 0,
-                transform: `translateX(calc(-50% + ${hitX}px))`,
+                transform: `translateX(calc(-50% + ${laneX}px))`,
                 width: laneW,
                 height: laneH,
                 zIndex: z,
@@ -1240,11 +1237,10 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
                   position: "absolute",
                   left: "50%",
                   bottom: 0,
-                  transform: "translateX(-50%)",
+                  transform: "translateX(calc(-50% - ${laneNudge}px))",
                   padding: 6,
                   rotate: rot,
                   y: visualY,
-                  x: -laneNudge, // counter the lane shift
                   transformOrigin: "50% 95%",
                   background: cardFaceBg(c),
                   border: isDiscard
