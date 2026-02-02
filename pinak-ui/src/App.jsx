@@ -1473,7 +1473,7 @@ tableArea: {
   display: "grid",
   gridTemplateRows: "auto 1fr auto",
   gap: 8,
-  height: "calc(100svh - 220px)",
+  height: "calc(100svh - 420px)",
   minHeight: 0
 },
 
@@ -1486,7 +1486,7 @@ tableArea: {
     padding: 10,
     boxShadow: "0 14px 40px rgba(0,0,0,0.22)",
     backdropFilter: "blur(10px)",
-    marginTop: -36,
+    marginTop: 0,
     position: "relative",
     zIndex: 10
   },
