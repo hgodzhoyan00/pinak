@@ -1469,12 +1469,18 @@ tableArea: {
   marginRight: RIGHT_RAIL_W + RAIL_GAP,
 
   padding: "8px 12px",
-  paddingRight: 272, 
   display: "grid",
   gridTemplateRows: "auto 1fr auto",
   gap: 8,
-  height: "calc(100svh - 420px)",
-  minHeight: 0
+
+  // ✅ IMPORTANT: do NOT make this too short or Open Stack collapses
+  height: "calc(100svh - 220px)",
+
+  // ✅ reserve space above handDock/action bar so chat never sits behind cards
+  paddingBottom: 240,
+
+  minHeight: 0,
+  boxSizing: "border-box",
 },
 
   center: { position: "relative", width: "100%" },
@@ -1486,7 +1492,7 @@ tableArea: {
     padding: 10,
     boxShadow: "0 14px 40px rgba(0,0,0,0.22)",
     backdropFilter: "blur(10px)",
-    marginTop: 0,
+    marginTop: -36,
     position: "relative",
     zIndex: 10
   },
