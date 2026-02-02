@@ -1040,7 +1040,7 @@ return (
   </div>
 </div>
   {/* RIGHT */}
-  <div style={styles.midSide}>
+  <div style={{ ...styles.midSide, alignSelf: "stretch" }}>
     <Seat
       pos="right"
       player={pRight}
@@ -1463,24 +1463,19 @@ const styles = {
   checkboxRow: { display: "flex", alignItems: "center", marginTop: 4 },
 
 tableArea: {
-  // ✅ take only the space between rails
-  width: `calc(100% - ${LEFT_RAIL_W + RIGHT_RAIL_W + RAIL_GAP * 2}px)`,
-  marginLeft: LEFT_RAIL_W + RAIL_GAP,
-  marginRight: RIGHT_RAIL_W + RAIL_GAP,
-
+  width: "100%",
   padding: "8px 12px",
   display: "grid",
   gridTemplateRows: "auto 1fr auto",
   gap: 8,
 
-  // ✅ IMPORTANT: do NOT make this too short or Open Stack collapses
-  height: "calc(100svh - 220px)",
-
-  // ✅ reserve space above handDock/action bar so chat never sits behind cards
-  paddingBottom: 240,
-
+  /* DO NOT constrain height aggressively */
   minHeight: 0,
-  boxSizing: "border-box",
+
+  /* leave space above hand dock */
+  paddingBottom: 220,
+
+  boxSizing: "border-box"
 },
 
   center: { position: "relative", width: "100%" },
