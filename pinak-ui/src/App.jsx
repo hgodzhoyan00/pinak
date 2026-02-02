@@ -1182,6 +1182,10 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
   // ORIGINAL: center position across the fan
   const hitX = (t - 0.5) * spreadTotal;
 
+  // tiny RIGHT-only hitbox nudge (does NOT move the visual card)
+  const edge01 = (t - 0.5) * 2;           // -1..+1
+  const laneNudge = Math.max(0, edge01) * 10; // max 10px (safe)
+
   // Visual arc only
   const drop = Math.abs(rot) * dropFactor;
   const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
@@ -1211,7 +1215,7 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
         position: "absolute",
         left: "50%",
         bottom: 0,
-        transform: `translateX(calc(-50% + ${hitX}px))`,
+        transform: `translateX(calc(-50% + ${hitX + laneNudge}px))`,
         width: laneW,
         height: laneH,
         zIndex: z,
@@ -1231,6 +1235,7 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
           padding: 6,
           rotate: rot,
           y: visualY,
+          x: -laneNudge,
           transformOrigin: "50% 95%",
           background: cardFaceBg(c),
           border: isDiscard
