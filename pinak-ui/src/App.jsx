@@ -1189,7 +1189,6 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
           const baseX = (t - 0.5) * spreadTotal;
 
           // right-side lane nudge (hitbox only)
-          const edge = (t - 0.5) * 2;          // -1..+1
           const laneNudge = Math.max(0, edge) * 24; // start 24, try 32 if needed
 
           // the lane moves, but the card will be counter-shifted back
