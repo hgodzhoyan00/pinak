@@ -2097,7 +2097,7 @@ chatRail: {
   position: "fixed",
   right: 10,
   top: 72,          // match left rail top
-  bottom: 300,      // ✅ stays ABOVE handDock (prevents overlapping hand)
+  bottom: 120,      // ✅ stays ABOVE handDock (prevents overlapping hand)
   width: 240,       // match left rail width
 
   zIndex: 320,
