@@ -1182,7 +1182,7 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
           const edge = (t - 0.5) * 2; // -1 left → +1 right
 
           // ✅ bias mostly on the RIGHT side
-          const rightBias = Math.max(0, edge) * 18; // try 14 (if still off: 16, if too much: 12)
+          const rightBias = Math.max(0, edge) * 22; // try 14 (if still off: 16, if too much: 12)
           const leftBias  = Math.min(0, edge) * 3;  // tiny correction on left (keeps it stable)
 
           const hitX = (t - 0.5) * spreadTotal + rightBias + leftBias; 
