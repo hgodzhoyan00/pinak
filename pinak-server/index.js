@@ -24,6 +24,33 @@ const HAND_SIZE = 9;
 
 /* ---------- HELPERS ---------- */
 
+function nextTurnIndex(g, fromIndex) {
+  const n = g?.players?.length || 0;
+  if (!g || n <= 1) return 0;
+
+  // normal mode = simple rotation
+  if (!g.teamMode) return (fromIndex + 1) % n;
+
+  const currTeam = g.players[fromIndex]?.team;
+
+  // fallback safety
+  if (currTeam !== 0 && currTeam !== 1) {
+    return (fromIndex + 1) % n;
+  }
+
+  // pick next player from the OTHER team
+  for (let step = 1; step <= n; step++) {
+    const idx = (fromIndex + step) % n;
+    const t = g.players[idx]?.team;
+    if (t === 0 || t === 1 && t !== currTeam) {
+      return idx;
+    }
+  }
+
+  // worst-case fallback
+  return (fromIndex + 1) % n;
+}
+
 function buildDeck() {
   const deck = [];
   for (const s of SUITS) {
@@ -425,7 +452,7 @@ socket.on("createRoom", ({ room, name, teamMode, pid, team }) => {
   };
 
 // ✅ starter is left of dealer (will be 0 if only 1 player)
-games[room].turn = (games[room].dealerIndex + 1) % games[room].players.length;
+games[room].turn = nextTurnIndex(games[room], games[room].dealerIndex);
 
   socket.join(room);
   socket.emit("youAre", { pid: persistentPid });
@@ -487,7 +514,7 @@ socket.on("joinRoom", ({ room, name, pid, team }) => {
     !g.roundOver &&
     !g.gameOver
   ) {
-    g.turn = (g.dealerIndex + 1) % g.players.length;
+    g.turn = nextTurnIndex(g, g.dealerIndex);
   }
 
   socket.join(room);
@@ -615,7 +642,7 @@ socket.on("discard", ({ room, index }) => {
 
   // normal discard ends turn
   p.canDiscard = false;
-  g.turn = (g.turn + 1) % g.players.length;
+  g.turn = nextTurnIndex(g, g.turn);
 
   emit(room);
 });
@@ -644,7 +671,7 @@ socket.on("endTurn", ({ room }) => {
   // ✅ clear the restriction when the turn ends
   p.noDiscardCardId = null;
 
-  g.turn = (g.turn + 1) % g.players.length;
+  g.turn = nextTurnIndex(g, g.turn);
 
   emit(room);
 });
@@ -779,7 +806,7 @@ socket.on("endTurn", ({ room }) => {
 
     // ✅ rotate dealer + starter each round
     g.dealerIndex = ((g.dealerIndex ?? -1) + 1) % g.players.length;  // first continueGame => dealer becomes 0
-    g.turn = (g.dealerIndex + 1) % g.players.length;                // starter = player next to dealer
+    g.turn = nextTurnIndex(g, g.dealerIndex);             // starter = player next to dealer
 
     g.log.push("New round started");
     emit(room);
@@ -805,7 +832,7 @@ socket.on("newGame", ({ room }) => {
 
 // ✅ rotate dealer + starter for rematch too
 g.dealerIndex = ((g.dealerIndex ?? -1) + 1) % g.players.length;
-g.turn = (g.dealerIndex + 1) % g.players.length;
+g.turn = nextTurnIndex(g, g.dealerIndex);
 
   // reset scores (individual + team)
   if (g.teamMode) {
