@@ -319,6 +319,28 @@ export default function App() {
     return () => mq.removeEventListener?.("change", update);
   }, []);
 
+  useEffect(() => {
+  const html = document.documentElement;
+  const body = document.body;
+
+  const prevHtmlOverflow = html.style.overflow;
+  const prevBodyOverflow = body.style.overflow;
+  const prevBodyPosition = body.style.position;
+  const prevBodyWidth = body.style.width;
+
+  html.style.overflow = "hidden";
+  body.style.overflow = "hidden";
+  body.style.position = "fixed";   // key: prevents page from moving
+  body.style.width = "100%";
+
+  return () => {
+    html.style.overflow = prevHtmlOverflow;
+    body.style.overflow = prevBodyOverflow;
+    body.style.position = prevBodyPosition;
+    body.style.width = prevBodyWidth;
+  };
+}, []);
+
   /* ---------- SOUND HELPERS ---------- */
   function ensureAudio() {
     if (!audioCtxRef.current) {
@@ -1402,7 +1424,7 @@ const styles = {
       "linear-gradient(180deg, #0b3b2e 0%, #06261e 60%, #041b15 100%)",
     color: stylesTokens.textStrong,
     paddingTop: 0,
-    paddingBottom: 260
+    paddingBottom: 0
   },
 
   rotateWrap: {
@@ -1952,7 +1974,7 @@ fanCardCompact: {
 runsRail: {
   position: "fixed",
   left: 10,
-  top: 92,
+  top: 72,
   bottom: 120,
   width: 240,
   zIndex: 300,  // ✅ bump this up
@@ -2163,7 +2185,7 @@ chatInput: {
   color: "#fff",
   padding: "0 10px",
   outline: "none",
-  fontSize: 14,
+  fontSize: 16,
   boxSizing: "border-box",
 },
 
