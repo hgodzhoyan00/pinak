@@ -1934,7 +1934,7 @@ fanCardCompact: {
 runsRail: {
   position: "fixed",
   left: 10,
-  top: 72,
+  top: 92,
   bottom: 120,
   width: 240,
   zIndex: 300,  // ✅ bump this up
@@ -2083,7 +2083,7 @@ leaveBtn: {
 chatRail: {
   position: "fixed",
   right: 10,      // ✅ pushes it to the right edge
-  top: 72,        // ✅ below top bar (match your runsRail top)
+  top: 92,        // ✅ below top bar (match your runsRail top)
   bottom: 120,     // ✅ above action bar/hand (match your runsRail bottom)
   width: 240,     // ✅ same as runsRail (left rail)
 
