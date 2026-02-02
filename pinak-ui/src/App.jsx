@@ -1179,9 +1179,14 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
           const rot = (t - 0.5) * 2 * fanMax;
 
           // Center position across the fan
-          const edge = (t - 0.5) * 2;          // -1 (left edge) → +1 (right edge)
-          const hitX = (t - 0.5) * spreadTotal + edge * 6;  // ✅ small bias (try 6)
-          
+          const edge = (t - 0.5) * 2; // -1 left → +1 right
+
+          // ✅ bias mostly on the RIGHT side
+          const rightBias = Math.max(0, edge) * 14; // try 14 (if still off: 16, if too much: 12)
+          const leftBias  = Math.min(0, edge) * 3;  // tiny correction on left (keeps it stable)
+
+          const hitX = (t - 0.5) * spreadTotal + rightBias + leftBias; 
+                   
           // Visual arc only
           const drop = Math.abs(rot) * dropFactor;
           const visualY = yLift - drop + (isRunSelected ? -10 : 0) + (isDiscard ? -14 : 0);
