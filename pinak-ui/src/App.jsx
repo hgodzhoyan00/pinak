@@ -1184,7 +1184,7 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
 
   // tiny RIGHT-only hitbox nudge (does NOT move the visual card)
   const edge01 = (t - 0.5) * 2;           // -1..+1
-  const laneNudge = Math.max(0, edge01) * 10; // max 10px (safe)
+  const laneNudge = Math.max(0, edge01) * 14; // max 10px (safe)
 
   // Visual arc only
   const drop = Math.abs(rot) * dropFactor;
