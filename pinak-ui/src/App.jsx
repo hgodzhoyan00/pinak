@@ -1185,7 +1185,15 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
           const rightBias = Math.max(0, edge) * 22; // try 14 (if still off: 16, if too much: 12)
           const leftBias  = Math.min(0, edge) * 3;  // tiny correction on left (keeps it stable)
 
-          const hitX = (t - 0.5) * spreadTotal + rightBias + leftBias; 
+          // base visual position (DO NOT bias this)
+          const baseX = (t - 0.5) * spreadTotal;
+
+          // right-side lane nudge (hitbox only)
+          const edge = (t - 0.5) * 2;          // -1..+1
+          const laneNudge = Math.max(0, edge) * 24; // start 24, try 32 if needed
+
+          // the lane moves, but the card will be counter-shifted back
+          const laneX = baseX + laneNudge;
 
           // Visual arc only
           const drop = Math.abs(rot) * dropFactor;
@@ -1237,6 +1245,7 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
                   padding: 6,
                   rotate: rot,
                   y: visualY,
+                  x: -laneNudge, // counter the lane shift
                   transformOrigin: "50% 95%",
                   background: cardFaceBg(c),
                   border: isDiscard
