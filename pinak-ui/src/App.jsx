@@ -1142,7 +1142,6 @@ return (
     <div style={styles.handDock}>
       <div style={styles.handDockMeta}>
         <span>Run: {selected.length}</span>
-        <span>Discard: {discardPick ? "✓" : "—"}</span>
       </div>
 
 {(() => {
@@ -1863,7 +1862,7 @@ midSide: {
   handDockMeta: {
     position: "absolute",
     right: 10,
-    bottom: 40,              // pushes it down near the buttons
+    bottom: 24,              // pushes it down near the buttons
     display: "flex",
     justifyContent: "flex-end",
     gap: 12,
