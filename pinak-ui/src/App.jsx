@@ -291,6 +291,7 @@ export default function App() {
   const [chat, setChat] = useState([]);
   const [chatText, setChatText] = useState("");
   const chatEndRef = useRef(null);
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
   function sendChat() {
   const text = chatText.trim();
@@ -1178,18 +1179,23 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
           const t = fanCountLocal <= 1 ? 0.5 : idx / (fanCountLocal - 1);
           const rot = (t - 0.5) * 2 * fanMax;
 
-          // base visual x position (card stays here)
+          // base position for the hand fan (visual centerline)
           const baseX = (t - 0.5) * spreadTotal;
 
-          // right side = +1, left side = -1
-          const edge = (t - 0.5) * 2;
+          // right-side hitbox-only nudge (helps right cards register correctly)
+          const edge01 = (t - 0.5) * 2; // -1..+1
+          const laneNudge = Math.max(0, edge01) * 36; // try 24, 28, 32
 
-          // ✅ hitbox lane nudge (ONLY affects hitbox positioning)
-          const laneNudge = Math.max(0, edge) * 40; // start 28, try 36 if needed
+          // laneX = where the HITBOX goes (card will be counter-shifted back)
+          let laneX = baseX + laneNudge;
 
-          // lane is moved, but card will be counter-shifted back
-          const laneX = baseX + laneNudge;
-          const cardOffsetX = -laneNudge;
+          // ---- CLAMP: prevent hitboxes from entering left/right rails ----
+          const vw = window.innerWidth || 1200;
+          const railSafe = 260; // 240 rail + ~20 margin (adjust if needed)
+          const maxX = vw / 2 - railSafe;
+
+          // keep the whole lane inside safe center region
+          laneX = clamp(laneX, -maxX, maxX);
 
           // Visual arc only
           const drop = Math.abs(rot) * dropFactor;
@@ -2137,7 +2143,7 @@ chatRail: {
   bottom: 120,      // ✅ stays ABOVE handDock (prevents overlapping hand)
   width: 240,       // match left rail width
 
-  zIndex: 1200,
+  zIndex: 320,
   pointerEvents: "auto",
 
   borderRadius: 14,
