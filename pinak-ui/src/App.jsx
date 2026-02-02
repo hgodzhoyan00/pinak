@@ -422,14 +422,23 @@ useEffect(() => {
   socket.on("gameState", onGameState);
   socket.on("errorMsg", onErrorMsg);
   
-  socket.on("chatHistory", ({ room: r, chat: hist }) => {
-  setChat(Array.isArray(hist) ? hist : []);
-});
+  // --- CHAT LISTENERS (FIXED) ---
+  const onChatHistory = ({ chat: hist } = {}) => {
+    setChat(Array.isArray(hist) ? hist.slice(-60) : []);
+  };
 
-socket.on("chatMsg", ({ room: r, msg }) => {
-  if (!msg) return;
-  setChat((prev) => [...prev, msg].slice(-60));
-});
+  const onChatMsg = (payload) => {
+    const msg = payload?.msg ?? payload; // supports {msg} or msg directly
+    if (!msg) return;
+
+    setChat((prev) => {
+      if (msg.id && prev.some((m) => m.id === msg.id)) return prev; // dedupe
+      return [...prev, msg].slice(-60);
+    });
+  };
+
+  socket.on("chatHistory", onChatHistory);
+  socket.on("chatMsg", onChatMsg);
 
   return () => {
     socket.off("connect", onConnect);
@@ -437,8 +446,8 @@ socket.on("chatMsg", ({ room: r, msg }) => {
     socket.off("youAre", onYouAre);
     socket.off("gameState", onGameState);
     socket.off("errorMsg", onErrorMsg);
-    socket.off("chatHistory");
-    socket.off("chatMsg");
+    socket.off("chatHistory", onChatHistory);
+    socket.off("chatMsg", onChatMsg)
   };
   // IMPORTANT: do NOT depend on discardPick/target/soundOn here
 }, []);
@@ -1039,65 +1048,69 @@ return (
     </div>
   </div>
 </div>
-  {/* RIGHT */}
-  <div style={{ ...styles.midSide, alignSelf: "stretch" }}>
-    <Seat
-      pos="right"
-      player={pRight}
-      isMe={false}
-      isTurn={game.players[game.turn]?.id === pRight?.id}
-      target={target}
-      setTarget={setTarget}
-      sfxClick={sfx.click}
-      compact={true}
-      hideHeader={true}
-    />
-
-    {/* CHAT */}
-    <div style={styles.chatRail}> 
-      <div style={styles.chatHeader}>
-        <div style={{ fontWeight: 950 }}>Chat</div>
-        <button
-          onClick={() => setChatOpen((v) => !v)}
-          style={styles.chatToggleBtn}
-          type="button"
-        >
-          {chatOpen ? "—" : "+"}
-        </button>
-      </div>
-
-      {chatOpen && (
-        <>
-          <div style={{ ...styles.chatBody, height: 200 }}>
-            {(chat || []).map((m) => (
-              <div key={m.id}>
-                <div style={{ fontSize: 11, opacity: 0.8, fontWeight: 900 }}>{m.name}</div>
-                <div style={styles.chatBubble}>{m.text}</div>
-              </div>
-            ))}
-            <div ref={chatEndRef} />
-          </div>
-
-          <div style={styles.chatInputRow}>
-            <input
-              style={styles.chatInput}
-              value={chatText}
-              onChange={(e) => setChatText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendChat()}
-              placeholder="Type…"
-            />
-            <button style={styles.chatSendBtn} onClick={sendChat} type="button">
-              Send
-            </button>
-          </div>
-        </>
-      )}
+{/* RIGHT */}
+<div style={styles.midSide}>
+  <Seat
+    pos="right"
+    player={pRight}
+    isMe={false}
+    isTurn={game.players[game.turn]?.id === pRight?.id}
+    target={target}
+    setTarget={setTarget}
+    sfxClick={sfx.click}
+    compact={true}
+    hideHeader={true}
+  />
+</div>
+</div>
+  {/* CHAT */}
+  <div
+    style={{
+      ...styles.chatRail,
+      ...(chatOpen ? null : styles.chatRailCollapsed),
+    }}
+  >
+    <div style={styles.chatHeader}>
+      <div style={{ fontWeight: 950 }}>Chat</div>
+      <button
+        onClick={() => setChatOpen((v) => !v)}
+        style={styles.chatToggleBtn}
+        type="button"
+      >
+        {chatOpen ? "—" : "+"}
+      </button>
     </div>
-  </div>
-</div>
-</div>
 
-    {/* HAND DOCK (outside tableArea so it never stretches center) */}
+    {chatOpen && (
+      <>
+        <div style={styles.chatBody}>
+          {(chat || []).map((m, i) => (
+            <div key={m.id || i}>
+              <div style={{ fontSize: 11, opacity: 0.8, fontWeight: 900 }}>
+                {m.name}
+              </div>
+              <div style={styles.chatBubble}>{m.text}</div>
+            </div>
+          ))}
+          <div ref={chatEndRef} />
+        </div>
+
+        <div style={styles.chatInputRow}>
+          <input
+            style={styles.chatInput}
+            value={chatText}
+            onChange={(e) => setChatText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendChat()}
+            placeholder="Type…"
+          />
+          <button style={styles.chatSendBtn} onClick={sendChat} type="button">
+            Send
+          </button>
+        </div>
+      </>
+    )}
+  </div>
+</div>   {/* HAND DOCK (outside tableArea so it never stretches center) */}
     <div style={styles.handDock}>
       <div style={styles.handDockMeta}>
         <span>Run: {selected.length}</span>
@@ -1938,7 +1951,7 @@ runsRail: {
   bottom: 120,
   width: 240,
   zIndex: 300,  // ✅ bump this up
-  pointerEvents: "none",
+  pointerEvents: "auto",
   overflowY: "auto",
   overflowX: "hidden",
   right: "auto",
@@ -2082,23 +2095,31 @@ leaveBtn: {
 
 chatRail: {
   position: "fixed",
-  right: 10,      // ✅ pushes it to the right edge
-  top: 92,        // ✅ below top bar (match your runsRail top)
-  bottom: 120,     // ✅ above action bar/hand (match your runsRail bottom)
-  width: 240,     // ✅ same as runsRail (left rail)
+  right: 10,
+  top: 72,          // match left rail top
+  bottom: 300,      // ✅ stays ABOVE handDock (prevents overlapping hand)
+  width: 240,       // match left rail width
 
-  zIndex: 300,
+  zIndex: 320,
   pointerEvents: "auto",
-
-  display: "flex",
-  flexDirection: "column",
-  overflow: "hidden",
 
   borderRadius: 14,
   background: "rgba(0,0,0,0.18)",
   border: "1px solid rgba(255,255,255,0.10)",
   boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
   backdropFilter: "blur(10px)",
+
+  display: "flex",
+  flexDirection: "column",
+  overflow: "hidden",
+
+  boxSizing: "border-box",
+},
+
+chatRailCollapsed: {
+  bottom: "auto",     // stop stretching when collapsed
+  height: 56,   
+  overflow: "hidden",  // header-only
 },
 
 chatHeader: {
@@ -2106,48 +2127,30 @@ chatHeader: {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  borderBottom: "1px solid rgba(255,255,255,0.10)"
-},
-
-chatToggleBtn: {
-  width: 40,
-  height: 32,
-  borderRadius: 10,
-  border: "1px solid rgba(255,255,255,0.14)",
-  background: "rgba(0,0,0,0.25)",
-  color: "#fff",
-  fontWeight: 950,
-  fontSize: 18,
-  cursor: "pointer",
-  touchAction: "manipulation"
+  borderBottom: "1px solid rgba(255,255,255,0.10)",
+  boxSizing: "border-box",
 },
 
 chatBody: {
-  flex: 1,                 // ✅ THIS is what prevents the “header-only” collapse
+  flex: 1,
   overflowY: "auto",
   padding: 10,
-  WebkitOverflowScrolling: "touch"
-},
-
-chatBubble: {
-  maxWidth: "85%",
-  padding: "8px 10px",
-  borderRadius: 12,
-  background: "rgba(255,255,255,0.10)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  fontWeight: 800,
-  lineHeight: 1.2
+  WebkitOverflowScrolling: "touch",
+  boxSizing: "border-box",
 },
 
 chatInputRow: {
   display: "flex",
   gap: 8,
   padding: 10,
-  borderTop: "1px solid rgba(255,255,255,0.10)"
+  borderTop: "1px solid rgba(255,255,255,0.10)",
+  boxSizing: "border-box",
+  width: "100%",
 },
 
 chatInput: {
   flex: 1,
+  minWidth: 0,          // ✅ CRITICAL: prevents overflow wider than rail
   height: 38,
   borderRadius: 10,
   border: "1px solid rgba(255,255,255,0.14)",
@@ -2155,10 +2158,12 @@ chatInput: {
   color: "#fff",
   padding: "0 10px",
   outline: "none",
-  fontSize: 14
+  fontSize: 14,
+  boxSizing: "border-box",
 },
 
 chatSendBtn: {
+  flex: "0 0 auto",
   width: 64,
   height: 38,
   borderRadius: 10,
@@ -2167,32 +2172,7 @@ chatSendBtn: {
   color: "#fff",
   fontWeight: 950,
   cursor: "pointer",
-  touchAction: "manipulation"
+  touchAction: "manipulation",
+  boxSizing: "border-box",
 },
-chatRailFixed: {
-  position: "fixed",
-  right: 10,
-  top: 72,      // below top bar
-  bottom: 300,  // ✅ stays above handDock (handDock top ~ 290)
-  width: 320,
-
-  zIndex: 320,
-  pointerEvents: "auto",
-
-  borderRadius: 16,
-  background: "rgba(0,0,0,0.18)",
-  border: "1px solid rgba(255,255,255,0.12)",
-  boxShadow: "0 10px 30px rgba(0,0,0,0.28)",
-  backdropFilter: "blur(10px)",
-  overflow: "hidden",
-
-  display: "flex",
-  flexDirection: "column"
-},
-
-chatRailCollapsed: {
-  bottom: "auto",   // stops fixed rail from stretching
-  height: 56,       // just the header height
-},
-
 };
