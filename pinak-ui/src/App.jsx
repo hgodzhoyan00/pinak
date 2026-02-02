@@ -1185,7 +1185,7 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
           const edge = (t - 0.5) * 2;
 
           // ✅ hitbox lane nudge (ONLY affects hitbox positioning)
-          const laneNudge = Math.max(0, edge) * 36; // start 28, try 36 if needed
+          const laneNudge = Math.max(0, edge) * 40; // start 28, try 36 if needed
 
           // lane is moved, but card will be counter-shifted back
           const laneX = baseX + laneNudge;
@@ -2137,7 +2137,7 @@ chatRail: {
   bottom: 120,      // ✅ stays ABOVE handDock (prevents overlapping hand)
   width: 240,       // match left rail width
 
-  zIndex: 320,
+  zIndex: 1200,
   pointerEvents: "auto",
 
   borderRadius: 14,
