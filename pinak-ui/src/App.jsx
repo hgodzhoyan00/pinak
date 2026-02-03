@@ -917,11 +917,12 @@ return (
         <div style={styles.title}>{game.room}</div>
       </div>
 
-      <div style={styles.topBarCenter}>
-        {isMyTurn && !me.mustDiscard && !game.roundOver && !game.gameOver && (
-          <div style={styles.turnPillTop}>🔥 YOUR TURN</div>
-        )}
-
+<div style={styles.topBarCenter}>
+  {!game.roundOver && !game.gameOver && (
+    <div style={styles.turnPillTop}>
+      {isMyTurn ? "🔥 YOUR TURN" : `⏳ ${game.players[game.turn]?.name}'s turn`}
+    </div>
+  )}
         {oneLeftBanner.show && (
   <div style={styles.oneLeftBanner}>
     {oneLeftBanner.text}
@@ -1384,9 +1385,21 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
 <div style={styles.stickyBar}>
   <div style={styles.stickyInner4}>
     <button
-      style={styles.primaryBtnTiny}
+      type="button"
       disabled={!canCreateRun}
+      style={{
+        ...styles.primaryBtnTiny,
+        ...(
+          !me?.canDiscard
+            ? styles.runBtnDisabled       // ❌ haven’t drawn yet
+            : selected.length < 3
+            ? styles.runBtnPending        // 🟡 drawn, but not enough cards
+            : styles.runBtnReady          // ✅ ready to create run
+        )
+      }}
       onClick={() => {
+        if (!canCreateRun) return;
+
         ensureAudio();
         sfx.run();
 
@@ -1402,11 +1415,10 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
         setSelected([]);
         setDiscardPick(null);
       }}
-      type="button"
     >
       Create Run
     </button>
-
+    
     <button
       style={styles.primaryBtnTiny}
       disabled={!canAddToRun}
@@ -2290,5 +2302,23 @@ oneLeftBanner: {
   maxWidth: "min(520px, 92vw)",
   textAlign: "center",
   pointerEvents: "none"
+},
+
+runBtnDisabled: {
+  background: "rgba(255,255,255,0.08)",
+  border: "1px solid rgba(255,255,255,0.18)",
+  color: "rgba(255,255,255,0.45)",
+},
+
+runBtnPending: {
+  background: "linear-gradient(180deg, #ffb020, #cc7a00)",
+  border: "1px solid rgba(255,200,120,0.8)",
+  color: "#fff",
+},
+
+runBtnReady: {
+  background: "linear-gradient(180deg, #2ecc71, #1e9e56)",
+  border: "1px solid rgba(120,255,180,0.8)",
+  color: "#fff",
 },
 };
