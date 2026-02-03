@@ -8,7 +8,14 @@ const app = express();
 app.use(cors());
 
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+
+const io = new Server(server, {
+  cors: { origin: "*" },
+
+  // ✅ keeps clients from thinking the server died during CPU spikes
+  pingInterval: 25000, // default is 25000, we make it explicit
+  pingTimeout: 60000,  // allow up to 60s before disconnect
+});
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => console.log("Server running on", PORT));
