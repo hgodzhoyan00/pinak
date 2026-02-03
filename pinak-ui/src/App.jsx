@@ -14,6 +14,40 @@ const socket = io(SERVER_URL, {
 const SUIT_ORDER = ["♠", "♥", "♦", "♣"];
 const VALUE_ORDER = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 
+// --- client-side run validation (matches server rules) ---
+const ORDER = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+const INDEX = Object.fromEntries(ORDER.map((v, i) => [v, i]));
+
+function validRunClient(cards) {
+  if (!Array.isArray(cards) || cards.length < 3) return false;
+
+  const real = cards.filter((c) => c && c.value !== "2");
+  const jokers = cards.length - real.length;
+
+  // max 1 joker per run
+  if (jokers > 1) return false;
+
+  // need at least 2 real cards
+  if (real.length < 2) return false;
+
+  // all real cards same suit
+  const suit = real[0].suit;
+  if (!real.every((c) => c.suit === suit)) return false;
+
+  // map values to indexes and sort
+  const idx = real.map((c) => INDEX[c.value]).sort((a, b) => a - b);
+
+  // reject duplicates + count gaps
+  let gaps = 0;
+  for (let i = 1; i < idx.length; i++) {
+    const diff = idx[i] - idx[i - 1] - 1;
+    if (diff < 0) return false;       // duplicate or out of order
+    gaps += diff;
+  }
+
+  return gaps <= jokers;
+}
+
 /* ---------- SUIT UI ---------- */
 function suitColor(suit) {
   if (suit === "♥" || suit === "♦") return "#ff3b3b";
@@ -298,6 +332,17 @@ export default function App() {
 
 // Track previous hand sizes so we can detect "just hit 1"
   const prevHandLensRef = useRef(new Map());
+
+  const selectedCards = useMemo(() => {
+  if (!me?.hand) return [];
+  return selected
+    .map((id) => me.hand.find((c) => c.id === id))
+    .filter(Boolean);
+}, [selected, me?.hand]);
+
+const isSelectedRunValid = useMemo(() => {
+  return selectedCards.length >= 3 && validRunClient(selectedCards);
+}, [selectedCards]);
 
   useEffect(() => {
   const players = game?.players || [];
@@ -1382,43 +1427,43 @@ const dropFactor = fanCountLocal <= 10 ? 0.34 : fanCountLocal <= 18 ? 0.26 : 0.2
 
 
 {/* ACTION BAR */}
-<div style={styles.stickyBar}>
-  <div style={styles.stickyInner4}>
-    <button
-      type="button"
-      disabled={!canCreateRun}
-      style={{
-        ...styles.primaryBtnTiny,
-        ...(
-          !me?.canDiscard
-            ? styles.runBtnDisabled       // ❌ haven’t drawn yet
-            : selected.length < 3
-            ? styles.runBtnPending        // 🟡 drawn, but not enough cards
-            : styles.runBtnReady          // ✅ ready to create run
-        )
-      }}
-      onClick={() => {
-        if (!canCreateRun) return;
+      <div style={styles.stickyBar}>
+        <div style={styles.stickyInner4}>
+      <button
+        type="button"
+        disabled={!canAct || !isMyTurn || !me?.canDiscard || !isSelectedRunValid}
+        style={{
+          ...styles.primaryBtnTiny,
+          ...(
+            !me?.canDiscard
+              ? styles.runBtnDisabled        // ❌ haven’t drawn yet
+              : !isSelectedRunValid
+              ? styles.runBtnPending         // 🟡 drawn, but selection is not a legal run
+              : styles.runBtnReady           // ✅ legal run selected
+          )
+        }}
+        onClick={() => {
+          if (!canAct || !isMyTurn || !me?.canDiscard || !isSelectedRunValid) return;
 
-        ensureAudio();
-        sfx.run();
+          ensureAudio();
+          sfx.run();
 
-        const handLen = me?.hand?.length ?? 0;
-        const willEmpty = selected.length >= 1 && selected.length === handLen;
+          const handLen = me?.hand?.length ?? 0;
+          const willEmpty = selected.length >= 1 && selected.length === handLen;
 
-        safeEmit("openRun", { room: game.room, cardIds: selected });
+          safeEmit("openRun", { room: game.room, cardIds: selected });
 
-        if (willEmpty) {
-          socket.emit("playerWentOut", { room: game.room });
-        }
+          if (willEmpty) {
+            socket.emit("playerWentOut", { room: game.room });
+          }
 
-        setSelected([]);
-        setDiscardPick(null);
-      }}
-    >
-      Create Run
-    </button>
-    
+          setSelected([]);
+          setDiscardPick(null);
+        }}
+      >
+        Create Run
+      </button>
+
     <button
       style={styles.primaryBtnTiny}
       disabled={!canAddToRun}
