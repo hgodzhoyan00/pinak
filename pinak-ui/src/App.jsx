@@ -332,6 +332,9 @@ export default function App() {
 
 // Track previous hand sizes so we can detect "just hit 1"
   const prevHandLensRef = useRef(new Map());
+  
+ /* ---------- DERIVED ---------- */
+  const me = useMemo(() => game?.players?.find((p) => p.id === socket.id), [game]);
 
   const selectedCards = useMemo(() => {
   if (!me?.hand) return [];
@@ -591,9 +594,6 @@ useEffect(() => {
     socket.emit("reconnectRoom", { room: savedRoom, pid });
   }
 }, [connected, game]);
-
- /* ---------- DERIVED ---------- */
-  const me = useMemo(() => game?.players?.find((p) => p.id === socket.id), [game]);
 
   const isMyTurn = useMemo(() => {
     if (!game || !me) return false;
